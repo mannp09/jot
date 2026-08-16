@@ -2743,6 +2743,34 @@ if ("serviceWorker" in navigator){
   });
 }
 
+/* ★★★ ASK THE BROWSER NOT TO EVICT THIS DATA.
+   Without durable storage, localStorage is "best effort": a browser under disk
+   pressure may clear it, and the writing is gone with no warning and no undo.
+   Granting persistence moves the store into the class the browser will not
+   reclaim on its own.
+
+   ⚠⚠ THIS COULD NOT BE WRITTEN UNTIL 2026-08-16. `navigator.storage` is
+   gated on a SECURE CONTEXT, and the app was served over plain HTTP from a
+   LAN IP - so the API was simply absent on the one device it mattered on. The
+   call is new because the transport is new, not because it was overlooked.
+
+   ⚠ What it does NOT fix, stated plainly so nobody reads more into it:
+   - iOS/Safari still clears script-writable storage after 7 days without a
+     visit to the origin. Persistence does not exempt an app from that; opening
+     it regularly, and installing it to the Home Screen, is what does.
+   - It is not a backup. Export is the backup. This only stops the BROWSER
+     from discarding the data; it does nothing about a cleared profile, a lost
+     phone, or a tapped "clear site data".
+
+   Silent by design: Chrome decides from engagement heuristics without a
+   prompt, and a denial is not an error state worth showing - the app works
+   identically either way. */
+if (navigator.storage && navigator.storage.persist){
+  navigator.storage.persisted()
+    .then(already => already ? true : navigator.storage.persist())
+    .catch(() => {});
+}
+
 clock(); setInterval(clock, 15000);   /* < ROTATE_MS so a flip is never missed */
 renderHome();
 </script>
