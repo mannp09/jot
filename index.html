@@ -7,6 +7,15 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="JOT">
 <meta name="theme-color" content="#FDFBF3"/>
+<!-- ⚠ SAME SHAPE AS THE 8/15 MANIFEST MISS, one layer over: the manifest has
+     carried an icon since 8/15, so the INSTALLED app had one and the BROWSER
+     TAB did not. An installable PWA with a blank tab is half a feature that
+     reads as a whole one. Both now point at the SAME data URI, taken from
+     manifest.json at edit time rather than retyped, so they cannot drift. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='96' fill='%23FDFBF3'/%3E%3Crect x='104' y='96' width='4' height='320' fill='%23E3A0A0'/%3E%3Cg fill='none' stroke='%23CBDCEE' stroke-width='4'%3E%3Cpath d='M64 176h384M64 240h384M64 304h384M64 368h384'/%3E%3C/g%3E%3Ctext x='150' y='300' font-family='Helvetica,Arial,sans-serif' font-size='150' font-weight='800' fill='%23191919' letter-spacing='6'%3EJOT%3C/text%3E%3C/svg%3E"/>
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='96' fill='%23FDFBF3'/%3E%3Crect x='104' y='96' width='4' height='320' fill='%23E3A0A0'/%3E%3Cg fill='none' stroke='%23CBDCEE' stroke-width='4'%3E%3Cpath d='M64 176h384M64 240h384M64 304h384M64 368h384'/%3E%3C/g%3E%3Ctext x='150' y='300' font-family='Helvetica,Arial,sans-serif' font-size='150' font-weight='800' fill='%23191919' letter-spacing='6'%3EJOT%3C/text%3E%3C/svg%3E"/>
+<!-- description mirrors manifest.json exactly, for the same reason -->
+<meta name="description" content="Capture a thought the second it lands. Everything else is derived."/>
 <!-- ⚠ FOUND BY THE 8/15 DRIFT SWEEP: the service worker shipped and the
      MANIFEST HALF DID NOT, so jot was offline-capable but not installable -
      no home-screen icon, no standalone launch. Half a feature that reads as
@@ -14,11 +23,54 @@
      pre-notepad grey (#FBFAF7) rather than the paper cream. -->
 <link rel="manifest" href="manifest.json">
 <title>jot</title>
+<script>
+/* THEME_PURE_START */
+const THEME_KEY = "jot.theme";
+function normalizeTheme(value){ return value === "dark" ? "dark" : "light"; }
+function nextTheme(value){ return normalizeTheme(value) === "dark" ? "light" : "dark"; }
+/* THEME_PURE_END */
+(function(){
+  const root = document.documentElement;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  const colors = { light:"#FDFBF3", dark:"#141A22" };
+  const read = () => {
+    try { return normalizeTheme(localStorage.getItem(THEME_KEY)); }
+    catch (_) { return "light"; }
+  };
+  const sync = theme => {
+    document.querySelectorAll("[data-theme-toggle]").forEach(button => {
+      const dark = theme === "dark";
+      button.setAttribute("aria-pressed", String(dark));
+      button.setAttribute("aria-label", dark ? "Switch to light mode" : "Switch to dark mode");
+      button.setAttribute("title", dark ? "Light mode" : "Dark mode");
+    });
+  };
+  const apply = (value, persist=false) => {
+    const theme = normalizeTheme(value);
+    root.dataset.theme = theme;
+    root.style.colorScheme = theme;
+    if (meta) meta.setAttribute("content", colors[theme]);
+    if (persist){ try { localStorage.setItem(THEME_KEY, theme); } catch (_) {} }
+    sync(theme);
+    return theme;
+  };
+  const bind = () => {
+    document.querySelectorAll("[data-theme-toggle]").forEach(button => {
+      if (button.dataset.themeBound) return;
+      button.dataset.themeBound = "1";
+      button.addEventListener("click", () => apply(nextTheme(root.dataset.theme), true));
+    });
+    sync(normalizeTheme(root.dataset.theme));
+  };
+  window.JotTheme = { apply, bind, current:() => normalizeTheme(root.dataset.theme) };
+  apply(read());
+})();
+</script>
 <!--
   jot — capture prototype. v3, 2026-08-14.
 
-  v2 edits:  placeholder is the prompt · text sits ON the rule · back left,
-             check right · caps count · 12:27PM EDT | MIDDAY · day parts defined.
+  v2 edits:  placeholder is the prompt · text sits ON the rule · Done right ·
+             caps count · 12:27PM EDT | MIDDAY · day parts defined.
   v3 edits:  footer buttons gone. Left hamburger opens the library, which holds
              profile, export, clear, and every jot with the address it was
              filed under.
@@ -72,7 +124,7 @@
   string means the data and the look can never drift apart.
 
   FIXED EARLIER IN THE SAME AUDIT
-    - the plus card had no label while the other three did. now LOOSE.
+    - the plus card had no label while the other three did. now THOUGHTS.
     - fulfilment -> fulfillment. HIS spelling, from his own message, changed in
       the client AND in jot_schema.py so the category key matches.
     - "what did you just eat" gained its question mark, only because he wrote it
@@ -144,18 +196,15 @@
   --tr-tight:-.4px; --tr-body:0; --tr-label:1.2px; --tr-micro:1.5px;
 
 }
-/* ★★★ NO DARK MODE, his ruling 2026-08-15: "i dont want black - i want a
-   note book feel." The dark-notebook palette that lived here made the app
-   render near-black on any phone set to dark mode - which is most evenings -
-   and that IS the black he was seeing. A notebook is cream paper whatever
-   the hour. color-scheme pins form controls and scrollbars light too. */
+/* Manual only: the existing cream notebook remains the default. Jot never
+   follows the operating-system theme behind the user's back. */
 :root{ color-scheme:light }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
 body{background:var(--paper);color:var(--ink);
   font:var(--f3)/1.55 'Manrope',ui-sans-serif,-apple-system,sans-serif;
   overscroll-behavior:none}
-#app{position:relative;min-height:100dvh;display:flex;flex-direction:column;
+#app{position:relative;height:100dvh;display:flex;flex-direction:column;
   padding:max(env(safe-area-inset-top),14px) var(--pad) max(env(safe-area-inset-bottom),18px)}
 
 header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
@@ -200,15 +249,15 @@ header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
 #padq{flex:1;min-width:0}
 .pcat{font-size:var(--f0);font-weight:700;letter-spacing:var(--tr-micro);color:var(--accent);margin-bottom:3px}
 .pq{font-size:var(--f4);font-weight:600;line-height:1.3}
-#lines{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-top:8px;
+#lines{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding-top:8px;
   background-image:repeating-linear-gradient(transparent 0 calc(var(--line) - 1px),
     var(--rule) calc(var(--line) - 1px) var(--line));
   background-position:0 8px;background-attachment:local}
 /* ★★★ the timestamp is DRAWN, not stored. ::before from a data attribute is
    unselectable and uncopyable by construction, so a three paragraph selection
    copies three paragraphs and not a column of times. */
-.row{position:relative;padding-left:70px;min-height:var(--line);
-  line-height:var(--line);white-space:pre-wrap;word-break:break-word}
+.row{position:relative;width:100%;max-width:100%;padding-left:70px;min-height:var(--line);
+  line-height:var(--line);white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere}
 .row::before{content:attr(data-t);position:absolute;left:0;top:0;width:60px;
   font-size:var(--f1);font-weight:700;letter-spacing:.4px;color:var(--muted);
   font-variant-numeric:tabular-nums;line-height:var(--line);
@@ -233,9 +282,39 @@ header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
   min-height:52px;padding:0 16px;border:1px solid var(--rule);border-radius:13px;
   background:var(--card);color:inherit;font:600 var(--f3)/1.3 inherit;
   cursor:pointer;text-align:left;width:100%}
+/* ★ label and sub-label are the SAME color on purpose (ruled 8/20:
+   "make sure both reds are same color, confirm same with green"). */
 .mrow.danger{color:#B3342A}
+.mrow.danger > span:first-child,.mrow.danger .sub{color:#B3342A}
+.mrow.go{color:#2E7D51}
+.mrow.go > span:first-child,.mrow.go .sub{color:#2E7D51}
+[data-theme="dark"] .mrow.go{color:#5BBF7E}
+[data-theme="dark"] .mrow.go > span:first-child,[data-theme="dark"] .mrow.go .sub{color:#5BBF7E}
+[data-theme="dark"] .mrow.danger{color:#D24A3E}
+[data-theme="dark"] .mrow.danger > span:first-child,[data-theme="dark"] .mrow.danger .sub{color:#D24A3E}
 .mrow:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .mrow .sub{font-size:var(--f1);font-weight:500;color:var(--muted)}
+.libstack{display:flex;flex-direction:column;gap:8px;padding:6px 0 14px}
+.libsection{border:1px solid var(--atelier-edge);border-radius:14px;background:var(--atelier-surface);overflow:clip}
+.libsection > summary{list-style:none;min-height:50px;padding:0 12px;display:grid;
+  grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center;cursor:pointer;
+  color:var(--ink);font:700 var(--f1)/1.2 'Manrope',sans-serif;letter-spacing:var(--tr-label);text-transform:uppercase}
+.libsection > summary::-webkit-details-marker{display:none}
+.libsection > summary:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
+.libsection .section-sub{color:var(--muted);font-weight:600;letter-spacing:var(--tr-body);white-space:nowrap}
+.libsection .section-chevron{color:var(--accent);transition:transform .16s var(--ease-out-4)}
+.libsection[open] .section-chevron{transform:rotate(180deg)}
+.libpanel{display:flex;flex-direction:column;gap:7px;padding:0 8px 8px;border-top:1px solid var(--rule)}
+.libpanel .mrow{min-height:46px;margin-top:7px;background:var(--card)}
+.libpanel .srch{margin:8px 0 0}
+.library-timeline-heading{display:flex;align-items:end;justify-content:space-between;gap:12px;
+  margin:16px 0 8px;padding:0 2px 8px;border-bottom:1px solid var(--rule);color:var(--ink)}
+.library-timeline-heading b{font-size:var(--f0);letter-spacing:var(--tr-micro)}
+.library-timeline-heading span{font-size:11px;font-weight:700;letter-spacing:var(--tr-micro);color:var(--muted);text-align:right}
+.patternpeek{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding-top:8px}
+.patternpeek div{padding:10px 8px;border-radius:10px;background:var(--card);text-align:center}
+.patternpeek b{display:block;color:var(--accent);font-size:var(--f3)}
+.patternpeek span{display:block;margin-top:2px;color:var(--muted);font-size:var(--f0);font-weight:700;letter-spacing:var(--tr-label)}
 .daylab{font-size:var(--f1);font-weight:700;letter-spacing:var(--tr-micro);color:var(--muted);
   padding:14px 2px 8px}
 .jrow{display:grid;grid-template-columns:62px 1fr;gap:10px;align-items:start;
@@ -259,8 +338,15 @@ header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
 .deetrow{display:grid;grid-template-columns:60px 1fr;gap:10px;align-items:start}
 .deetrow .t{font-size:var(--f1);font-weight:700;color:var(--muted);
   font-variant-numeric:tabular-nums;line-height:var(--line)}
+/* ⚠ DESKTOP WIDTH, widened 2026-08-18 on his word: "for desktop view extend
+   notepad to full and full margin too." The 780px shell was a phone-first cap
+   that left most of a laptop screen empty either side of the sheet.
+   ★ Not edge-to-edge on purpose: a notepad pinned to both bezels of a wide
+   monitor is harder to read, not easier. 1400 plus real side padding gives the
+   full-bleed feel while keeping the paper a shape you can actually scan. */
 @media (min-width:760px){
-  #app,#lib{max-width:780px;margin:0 auto;padding-top:28px}
+  #app,#lib{max-width:1400px;margin:0 auto;padding-top:28px;
+            padding-inline:clamp(24px,4vw,72px)}
   .card .q{font-size:var(--f4)}
 }
 
@@ -277,6 +363,53 @@ header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
 .task{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;
   min-height:56px;padding:4px;border-bottom:1px solid var(--rule)}
 @media (max-height:700px){ .task{min-height:50px} }
+.decktools{display:flex;align-items:center;justify-content:flex-end;gap:7px;min-height:36px}
+.deckbtn,.qctl button,.promptform button{
+  min-height:34px;padding:0 11px;border:1px solid var(--rule);border-radius:10px;
+  background:var(--card);color:var(--accent);font:800 var(--f0)/1 'Manrope',sans-serif;
+  letter-spacing:var(--tr-label);text-transform:uppercase;cursor:pointer
+}
+.deckbtn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.deckbtn:disabled,.qctl button:disabled{opacity:.38;cursor:default}
+.manage-task{grid-template-columns:20px minmax(0,1fr) auto;padding:8px 10px;cursor:grab;
+  transition:opacity .14s ease,transform .14s ease,box-shadow .14s ease}
+.manage-task:active{cursor:grabbing}.manage-task.dragging{opacity:.38;transform:scale(.985)}
+.manage-task.drop-before{box-shadow:0 -3px 0 var(--accent)}
+.manage-task.drop-after{box-shadow:0 3px 0 var(--accent)}
+.qgrip{width:16px;height:28px;align-self:center;opacity:.48;
+  background:radial-gradient(circle,currentColor 1.5px,transparent 1.7px) 0 0/7px 7px;
+  color:var(--muted)}
+.qcopy{min-width:0}.qcopy b{display:block;font-size:var(--f0);letter-spacing:var(--tr-micro);color:var(--accent)}
+.qcopy span{display:block;margin-top:3px;font-size:var(--f2);line-height:1.3;overflow-wrap:anywhere}
+.qctl{display:flex;align-items:center;gap:5px}.qctl button{width:36px;padding:0;font-size:var(--f2)}
+.qctl .hideq{width:auto;padding-inline:9px;color:#8E3B34}
+.hiddenprompts{display:flex;flex-direction:column;gap:6px;padding:7px 0 2px;border-top:1px solid var(--rule)}
+.hiddenprompts > b{font-size:var(--f0);letter-spacing:var(--tr-micro);color:var(--muted)}
+.hiddenrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 8px}
+.hiddenrow span{min-width:0;font-size:var(--f1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.promptform{display:grid;grid-template-columns:minmax(100px,.35fr) minmax(0,1fr) auto auto;gap:7px;padding:9px;
+  border:1px solid var(--rule);border-radius:14px;background:color-mix(in srgb,var(--card) 82%,transparent)}
+.promptform input{min-width:0;height:38px;padding:0 10px;border:1px solid var(--rule);border-radius:9px;
+  background:#fff;color:var(--ink);font:inherit}
+.promptform input:focus{outline:3px solid color-mix(in srgb,var(--accent) 30%,transparent);border-color:var(--accent)}
+.decknote{font-size:var(--f0);line-height:1.4;color:var(--muted);padding:2px 8px}
+@media(max-width:620px){
+  .promptform{grid-template-columns:1fr auto}.promptform input{grid-column:1/-1}
+  /* ⚠ controls stay ON THE SAME ROW as their question. The old rule dropped
+     .qctl to an implicit second grid row, right-aligned, where it floated
+     between cards and read as belonging to nothing (ruled 8/20: "all out of
+     place"). Smaller buttons buy back the width instead. */
+  .manage-task{grid-template-columns:20px minmax(0,1fr) auto;column-gap:8px}
+  .qctl{grid-column:auto;flex:none}
+  .qctl button{width:32px;min-height:38px}
+  .qctl .hideq{width:auto;padding-inline:7px;font-size:var(--f1)}
+  /* ⚠ breathing room at the paper's left edge. Edge-to-edge paper stays,
+     but the TIMESTAMP and the question header no longer start at x=0
+     (ruled 8/20: "to the left there needs to be more room"). The red margin
+     line at 62px is untouched; the stamp now sits inset inside the margin. */
+  #padtop{padding-left:12px}
+  .row::before{left:10px;width:50px}
+}
 .box{flex:0 0 auto;width:26px;height:26px;border-radius:7px;cursor:pointer;
   border:2px solid var(--rule);background:transparent;color:transparent;
   display:grid;place-items:center;padding:0;font:700 var(--f2)/1 inherit;
@@ -362,11 +495,6 @@ header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
 .varr:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .varr .ic{width:15px;height:15px}
 .views{scroll-behavior:smooth}
-/* ★ the pad's top-left is the lit plus now, matching the box that opened it */
-#back{background:var(--accent);border-color:var(--accent);color:#fff}
-#back .ic{width:18px;height:18px}
-
-
 /* a line you can tap to edit should look like one, quietly */
 
 
@@ -385,13 +513,16 @@ header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
    ★ The red margin runs the full height of the writing area at exactly the
    gutter width, so the timestamps sit in the margin the way a date does on
    real ruled paper, and his words start where the rule begins. */
-#lines{position:relative}
-#lines::before{content:"";position:absolute;left:62px;top:0;bottom:0;width:1.5px;
-  background:var(--margin);opacity:.75;pointer-events:none;z-index:0}
+#lines{position:relative;--paper-margin-x:62px}
 #lines > *{position:relative;z-index:1}
-/* the ruled lines are blue now, and sit UNDER the text baseline, not through it */
-#lines{background-image:repeating-linear-gradient(transparent 0 calc(var(--line) - 1px),
-  var(--rule) calc(var(--line) - 1px) var(--line))}
+/* Both paper marks are backgrounds so they cover the entire scrollable sheet.
+   An absolute red rule only covered one viewport and disappeared after scrolling. */
+#lines{background-image:linear-gradient(90deg,
+    transparent 0 var(--paper-margin-x),
+    color-mix(in srgb,var(--margin) 75%,transparent) var(--paper-margin-x) calc(var(--paper-margin-x) + 1.5px),
+    transparent calc(var(--paper-margin-x) + 1.5px) 100%),
+  repeating-linear-gradient(transparent 0 calc(var(--line) - 1px),
+    var(--rule) calc(var(--line) - 1px) var(--line))}
 .row::before{color:var(--muted)}
 /* the home list is paper too, so the app never switches materials */
 .task{border-bottom:1px solid color-mix(in srgb,var(--rule) 80%,transparent)}
@@ -458,9 +589,28 @@ body{background:var(--paper)}
 .mrow .sub{ letter-spacing:var(--tr-label); font-size:var(--f1) }
 .empty{ letter-spacing:var(--tr-label); font-size:var(--f1) }
 /* the day part in the header is a tap target */
-#dp{ cursor:pointer; border-bottom:1px dashed currentColor; padding-bottom:1px }
+#dp{ cursor:pointer; color:var(--accent) }   /* blue signals clickable, no underline (ruled 8/20) */
 
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+/* ★ HOVER PARITY PASS (ruled 8/20: "make the ones that are not hoverable,
+   hoverable"). Audit found 10 controls with hover and ~25 without: the whole
+   Edit Questions toolset, the pad Done buttons, the burger, every gate
+   button, the library accordion, both theme toggles, the demo entry. One
+   grouped rule, theme-neutral (accent tint works on cream and night alike),
+   inside hover:hover so touch devices never see a stuck state. */
+@media (hover:hover){
+  .deckbtn:hover,.qctl button:hover,.promptform button:hover,.hiddenrow button:hover,
+  #done:hover,#pbDone:hover,#pbTop:hover,.burger:hover,.cog:hover,.libclose:hover,
+  .segbtn:hover,.abtn:hover,.gchoice:hover,#gSkip:hover,#gDemo:hover,#gSubmit:hover,
+  #gBack:hover,#gInChoice:hover,#gUpChoice:hover,#jumpFirst:hover,#jumpLatest:hover,
+  #themeToggle:hover,#libThemeToggle:hover,.demo-profile:hover,.master:hover,
+  .patternpeek:hover,.libsection > button:hover{
+    background-color:color-mix(in srgb,var(--accent) 12%,transparent);
+    transition:background-color .15s ease}
+  .alink:hover,#aForgot:hover,#gForgot:hover{text-decoration:underline;color:var(--accent)}
+  .qgrip:hover{opacity:.9;cursor:grab}
+}
+
 
 /* ⚠⚠ THIS BLOCK MUST STAY LAST IN THE SHEET. #lines and #home are each
    declared again above, and at equal specificity the LATER rule wins. The
@@ -631,7 +781,7 @@ body::before{
 /* ★ the suggested tag - PENCIL, not ink. His spec 2026-08-15: "a button of
    the tag but a dif color to show that its suggested." Amber + dashed reads
    as an annotation waiting for his say; one tap files the jot, ignoring it
-   keeps LOOSE. Every real tag on this screen is solid accent blue. */
+   keeps THOUGHTS. Every real tag on this screen is solid accent blue. */
 .sgtag{font-size:var(--f0);font-weight:700;letter-spacing:var(--tr-label);
   color:#8A5A14;background:#F7ECD6;border:1.5px dashed #C9A45C;
   border-radius:999px;padding:8px 14px;cursor:pointer;margin:12px 0 0;
@@ -807,8 +957,14 @@ body::before{
    ★ Kept in `ch` so it still tracks the type scale, but the NUMBER comes from
    measuring the real font on his real text. Phones sit under the cap already
    and are untouched. */
+/* ⚠⚠ THIS was the cap actually breaking his sentences mid-thought on a wide
+   screen, not the shell above. 50ch is the classic prose-readability number
+   and it is WRONG for this surface: jot lines are fragments, not paragraphs,
+   and a fragment cut at 50 characters reads as a wrapped line rather than a
+   thought. ★ 100ch keeps long entries on one line while still stopping a
+   4K monitor from producing a single unreadable ribbon. */
 @media (min-width:760px){
-  .row, .deet, .jrow .pv{ max-width:50ch }
+  .row, .deet, .jrow .pv{ max-width:100ch }
 }
 
 /* ⚠⚠ THE STORAGE-LOCK BANNER. It has to be unmissable and it has to be
@@ -831,7 +987,7 @@ body::before{
 /* ★ TAP TO RAISE THE CONTROLS. His words: "when i tap screen my options need
    to come up - when i get to bottom it does this."
    The header controls live at the TOP of a document he may be 40 lines down.
-   This puts save and back under his thumb, on demand, and never covers the
+   This puts Newest under his thumb, on demand, and never covers the
    line he is writing because it only appears when he asks for it. */
 /* ⚠⚠ ANCHOR TO THE COLUMN, NOT THE VIEWPORT. The app is a 780px centred
    column at >=760px, but every `position:fixed` control was pinned to the
@@ -840,12 +996,15 @@ body::before{
    windows" he reported, and it is a whole class of bug, not one element.
    ★ left:0 + right:0 + max-width + auto margins centres a fixed element,
    which keeps this correct at EVERY width with no media query. */
-.padbar{position:fixed;left:0;right:0;max-width:780px;margin-inline:auto;
+.padbar{position:fixed;left:0;right:0;max-width:1400px;margin-inline:auto;  /* ⚠ tracks #app's cap. Left at 780 it would centre against a width the
+     sheet no longer has, which is a silent misalignment, not an error. */
+  
   bottom:max(env(safe-area-inset-bottom),14px);
   display:flex;justify-content:center;gap:10px;z-index:18;
   opacity:0;transform:translateY(14px);pointer-events:none;
   transition:opacity .18s var(--ease-out-3),transform .18s var(--ease-out-3)}
-.padbar.up{opacity:1;transform:none;pointer-events:auto}
+.padbar.up{opacity:1;transform:none;pointer-events:none}
+.padbar.up button{pointer-events:auto}
 .padbar button{min-height:48px;padding:0 22px;border-radius:999px;
   border:1.5px solid var(--rule);background:var(--card);color:var(--ink);
   font:800 var(--f1)/1 inherit;letter-spacing:var(--tr-label);
@@ -873,6 +1032,267 @@ body::before{
   .flab{padding:0}
 }
 
+
+.acct{padding:14px 2px;display:flex;flex-direction:column;gap:9px;max-width:420px}
+.acct .who{font-weight:800;font-size:15px}
+.acct .note{font-size:12.5px;color:var(--muted);line-height:1.45}
+.ain{font:inherit;font-size:15px;padding:11px 12px;border:1px solid var(--rule);
+     border-radius:8px;background:#fff;color:var(--ink);min-height:44px}
+.ain:focus{outline:3px solid var(--accent);outline-offset:1px}
+.abtn{font:inherit;font-weight:700;font-size:14px;padding:11px 12px;min-height:44px;
+      border:1px solid var(--rule);border-radius:8px;background:var(--card);color:var(--ink);
+      cursor:pointer}
+/* ⚠ was background:#fff + pri background:var(--ink): in dark mode that made a
+   cream button with white text, the invisible Sign up (ruled 8/20). Surfaces
+   and text now come from one token family in both themes, auth modal included. */
+.abtn.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
+.abtn[disabled]{opacity:.5}
+.alink{font:inherit;font-size:13px;background:none;border:0;color:var(--muted);
+       text-decoration:underline;cursor:pointer;padding:6px 2px;align-self:flex-start}
+.amsg{font-size:13px;min-height:18px;line-height:1.45}
+.amsg.bad{color:#b3261e}
+.amsg.good{color:var(--ink)}
+
+.gate{position:fixed;inset:0;z-index:99;background:var(--paper);   /* same paper as the questions page (ruled 8/20) */
+      display:flex;align-items:center;justify-content:center;padding:22px}
+.gcard{width:100%;max-width:330px;display:flex;flex-direction:column;gap:9px}
+.ghead{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.gside{display:flex;align-items:flex-start;gap:10px}
+.gclock{text-align:right;font-size:11px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--muted);line-height:1.55}
+.gclock b{color:var(--accent);font-weight:800}
+.glogo{color:var(--ink)}   /* wordmark styling comes from .brand, same as the home header (ruled 8/20) */
+.gsub{font-size:13.5px;color:var(--muted);margin-bottom:4px;line-height:1.45}
+.gskip{align-self:center;margin-top:6px}
+.gfoot{font-size:11.5px;color:var(--muted);text-align:center;line-height:1.5;margin-top:2px}
+.gchoices{display:flex;flex-direction:column;gap:10px;margin-top:6px}
+/* ★ four vertically stacked, full-width, equal-height choices (ruled 8/20:
+   "4 vertical... clean, best practices"). One primary, filled, at the bottom
+   where the thumb lives; the rest quiet and identical. */
+.gchoice{width:100%;min-height:58px;text-align:left;display:flex;flex-direction:column;
+  align-items:flex-start;justify-content:center;gap:3px;padding:11px 14px}
+/* ⚠⚠ ROOT CAUSE of the washed gate: .abtn ships a white background that the
+   dark theme never overrides, so dark-mode ink (cream) sat on white cards.
+   The button SURFACE and its TEXT now come from the same token family, so
+   both themes resolve as a pair instead of mixing palettes. */
+.gchoice{background:var(--card);border:1.5px solid var(--rule)}
+.gchoice b{font-size:13px;letter-spacing:var(--tr-label);text-transform:uppercase;
+  color:var(--ink)}
+.gchoice span{color:var(--muted)}
+.gchoice.pri{background:var(--accent);border-color:var(--accent)}
+.gchoice.pri b{color:#fff}
+.gchoice.pri span{color:color-mix(in srgb,#fff 82%,transparent)}
+.gchoice span{font-size:11.5px;font-weight:500;color:var(--muted);line-height:1.35}
+.gchoice.pri span{color:color-mix(in srgb,#fff 78%,transparent)}
+.gauth{display:flex;flex-direction:column;gap:9px;margin-top:2px}
+.gauth[hidden],.gchoices[hidden]{display:none!important}
+.gback{align-self:flex-start;margin:0;padding-left:0}
+.demo-profile{padding:14px 12px;border-radius:10px;background:var(--card);line-height:1.45}
+.demo-profile b{display:block;font-size:18px;margin-bottom:3px}
+.demo-profile span{display:block;color:var(--muted);font-size:12px}
+.demo-note{font-size:11.5px;color:var(--muted);line-height:1.45;padding:2px 4px}
+@media (max-width:420px){
+  .gate{align-items:flex-start;overflow-y:auto;padding-top:max(24px,env(safe-area-inset-top))}
+
+}
+
+/* ================= JOT ATELIER — REVERSIBLE FASHION PASS =================
+   The owner explicitly invited a fashionable pass provided it stays
+   easy to revert. This entire layer is intentionally contiguous: remove this
+   block and the previous visual system returns with no behavior or data change.
+
+   The direction is polished notebook, not dashboard: paper remains the main
+   material, while controls borrow the quiet depth, compact radii, and physical
+   feedback of a well-made desktop or chat app. */
+:root{
+  --atelier-surface:color-mix(in srgb,var(--card) 92%,#EAF1FA 8%);
+  --atelier-edge:color-mix(in srgb,var(--accent) 16%,var(--rule));
+  --atelier-wash:color-mix(in srgb,var(--accent) 7%,transparent);
+  --atelier-shadow:0 1px 2px rgb(25 25 25 / .05),
+                   0 10px 28px rgb(43 92 155 / .09);
+  --atelier-shadow-up:0 2px 4px rgb(25 25 25 / .07),
+                      0 16px 38px rgb(43 92 155 / .14);
+}
+
+/* One compact control language across home, pad, and library. */
+.iconbtn{
+  border-color:var(--atelier-edge);background:var(--atelier-surface);
+  border-radius:14px;box-shadow:0 1px 1px rgb(255 255 255 / .9) inset,
+    0 1px 2px rgb(25 25 25 / .06);
+  transition:transform .14s var(--ease-out-4),
+    background-color .18s var(--ease-out-4),
+    border-color .18s var(--ease-out-4),box-shadow .18s var(--ease-out-4)
+}
+.iconbtn:active{transform:scale(.92);box-shadow:none}
+#done{
+  width:62px;min-width:62px;height:62px;padding:0;border-radius:20px;
+  border-color:rgb(255 255 255 / .38);background:var(--accent);color:#FFFEFA;
+  box-shadow:0 1px 0 rgb(255 255 255 / .28) inset,var(--atelier-shadow-up)
+}
+#done .ic{width:24px;height:24px}
+.brand{font-size:28px;letter-spacing:4.2px;text-shadow:0 1px 0 #fff}
+header,#padtop,#libtop{min-height:58px}
+
+/* Prompt rows stay ruled-paper rows, but now feel like deliberate controls. */
+.task{
+  margin:3px 0;padding:5px 8px;border:1px solid transparent;border-radius:14px;
+  transition:transform .14s var(--ease-out-4),
+    background-color .18s var(--ease-out-4),
+    border-color .18s var(--ease-out-4),box-shadow .18s var(--ease-out-4)
+}
+.task.has{background:color-mix(in srgb,var(--atelier-wash) 58%,transparent)}
+.box{
+  width:30px;height:30px;border-radius:9px;border-color:var(--atelier-edge);
+  background:color-mix(in srgb,var(--card) 90%,transparent)
+}
+.seed{padding-inline:3px;font-weight:550}
+.cnt{
+  min-width:24px;min-height:24px;padding:0 7px;border-radius:999px;
+  display:grid;place-items:center;color:var(--accent);
+  background:var(--atelier-wash);font-variant-numeric:tabular-nums
+}
+.cnt:empty{min-width:0;min-height:0;padding:0;background:transparent}
+.tally{padding:7px 9px;border-radius:10px;color:var(--muted)}
+
+/* The pencil is the app's signature control: more icon-like, less generic FAB. */
+.fab{
+  width:62px;height:62px;border-radius:20px;border:1px solid rgb(255 255 255 / .38);
+  box-shadow:0 1px 0 rgb(255 255 255 / .28) inset,var(--atelier-shadow-up);
+  transition:transform .16s var(--ease-out-4),box-shadow .18s var(--ease-out-4)
+}
+.fab:active{transform:translateY(1px) scale(.9);box-shadow:var(--shadow-2)}
+
+/* Library controls share the same quiet surface instead of reading as forms. */
+.cog,.fsum{
+  margin:4px 0;border:1px solid var(--atelier-edge);border-radius:13px;
+  padding-inline:12px;background:var(--atelier-surface)
+}
+.filterbar{margin-top:7px;padding-inline:2px}
+.mrow{border-radius:12px;padding-inline:10px}
+.jrow{
+  margin:2px 0;padding:10px 9px;border:1px solid transparent;border-radius:12px;
+  transition:background-color .16s var(--ease-out-4),
+    border-color .16s var(--ease-out-4),transform .14s var(--ease-out-4)
+}
+.seg{border:1px solid color-mix(in srgb,var(--atelier-edge) 70%,transparent)}
+.segbtn.on{box-shadow:0 1px 4px rgb(25 25 25 / .1)}
+.vchip{border-color:var(--atelier-edge);background:var(--atelier-surface)}
+.statrow{padding-inline:10px;border-radius:12px}
+.padbar button{border-color:var(--atelier-edge);box-shadow:var(--atelier-shadow)}
+
+/* The pad is paper, not a textbox. Hide the browser rail and offer a quiet
+   first/latest navigator at the paper edge when there is real scroll range. */
+#pad{position:relative}
+#lines{scrollbar-width:none}
+#lines::-webkit-scrollbar{display:none}
+.scrollrail{
+  position:absolute;left:auto;right:12px;top:50%;z-index:19;display:flex;flex-direction:column;
+  gap:3px;padding:4px;border:1px solid var(--atelier-edge);border-radius:999px;
+  background:color-mix(in srgb,var(--card) 92%,transparent);
+  box-shadow:var(--atelier-shadow);opacity:0;pointer-events:none;
+  transform:translateY(-50%) scale(.96);
+  transition:opacity .18s var(--ease-out-4),transform .18s var(--ease-out-4)
+}
+.scrollrail.ready{opacity:.58;pointer-events:auto;transform:translateY(-50%)}
+.scrollrail:hover,.scrollrail:focus-within{opacity:1}
+.scrollrail button{
+  width:34px;height:34px;border:0;border-radius:50%;background:transparent;
+  color:var(--accent);display:grid;place-items:center;cursor:pointer;
+  transition:background-color .14s ease,transform .14s var(--ease-out-4),opacity .14s ease
+}
+.scrollrail button:hover{background:var(--atelier-wash)}
+.scrollrail button:active{transform:scale(.9)}
+.scrollrail button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.scrollrail button:disabled{opacity:.2;pointer-events:none}
+.scrollrail .ic{width:17px;height:17px}
+#jumpFirst .ic{transform:rotate(180deg)}
+
+@media (hover:hover){
+  .iconbtn:hover{background:#fff;border-color:color-mix(in srgb,var(--accent) 32%,var(--rule));
+    box-shadow:var(--atelier-shadow)}
+  .task:hover{background:var(--atelier-surface);border-color:var(--atelier-edge);
+    transform:translateY(-1px);box-shadow:0 7px 18px rgb(43 92 155 / .07)}
+  .jrow:hover,.mrow:hover,.statrow:hover{background:var(--atelier-surface);
+    border-color:var(--atelier-edge)}
+  .fab:hover{transform:translateY(-2px);box-shadow:0 1px 0 rgb(255 255 255 / .3) inset,
+    0 20px 42px rgb(43 92 155 / .22)}
+}
+
+/* On desktop Jot becomes an intentional paper window instead of a stretched
+   phone. The writing/list column stays narrow enough to scan; the outer sheet
+   supplies breathing room and a Mac-like sense of place. */
+@media (min-width:760px){
+  body{padding:20px;background:color-mix(in srgb,var(--tint,var(--paper)) 76%,#DDE6F0)}
+  body::before{opacity:.34}
+  #app,#lib{
+    max-width:1180px;border:1px solid color-mix(in srgb,var(--atelier-edge) 82%,transparent);
+    border-radius:28px;background:var(--tint,var(--paper));box-shadow:var(--atelier-shadow-up)
+  }
+  #app{height:calc(100dvh - 40px);overflow:hidden}
+  #lib{inset:20px;height:calc(100dvh - 40px);overflow:hidden}
+  #home,#libtop,#libbody{width:100%;max-width:920px;margin-inline:auto}
+  /* Release the notebook chrome from the old reading-column cap. The small
+     responsive inset keeps both corners comfortable without pulling them back
+     toward the centre on wide screens. */
+  header{width:100%;max-width:none;margin-inline:0;padding-inline:14px}
+  /* The rounded outer sheet is the notebook. Let its ruled paper meet the
+     curved edge instead of rendering as a smaller rectangle inside it. */
+  #pad{
+    width:calc(100% + var(--pad) + var(--pad));max-width:none;
+    align-self:center;margin-inline:0;margin-bottom:-18px
+  }
+  #padtop{padding-inline:26px}
+  /* The paper reaches the curved shell, while its writing grid keeps a quiet
+     margin before the timestamp. These offsets preserve the timestamp and text
+     columns even though every ruled line now extends farther left and right. */
+  #lines{width:100%;margin-inline:0}
+  #lines{--paper-margin-x:88px}
+  .row{padding-left:96px}
+  .row::before{left:26px;width:60px}
+  #libtop{padding-inline:2px}
+  .fab{right:24px;bottom:24px}
+}
+
+@media (max-width:759px){
+  header{padding-bottom:4px;border-bottom:1px solid color-mix(in srgb,var(--rule) 62%,transparent)}
+  .task{border-bottom-color:color-mix(in srgb,var(--rule) 65%,transparent)}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .iconbtn,.task,.jrow,.fab{transition:none!important;transform:none!important}
+}
+
+/* JOT NIGHT NOTEBOOK — one reversible palette block. The mode is manual and
+   swaps only presentation tokens; jot data and day-part state never move. */
+.theme-toggle{position:relative}.theme-toggle .theme-moon{display:none}   /* light shows the sun (ruled 8/20) */
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#141A22;--ink:#F4EFE4;--muted:#AAA594;--rule:#304963;
+  --margin:#D47B7B;--accent:#82B7FF;--card:#1C2531;
+  --atelier-surface:color-mix(in srgb,var(--card) 91%,#2C3E54 9%);
+  --atelier-edge:color-mix(in srgb,var(--accent) 22%,var(--rule));
+  --atelier-wash:color-mix(in srgb,var(--accent) 10%,transparent);
+  --atelier-shadow:0 1px 2px rgb(0 0 0 / .24),0 5px 16px rgb(0 0 0 / .14);
+  --atelier-shadow-up:0 2px 5px rgb(0 0 0 / .3),0 18px 42px rgb(0 0 0 / .24)
+}
+:root[data-theme="dark"][data-day]{--tint:var(--paper)}
+:root[data-theme="dark"] body::before{opacity:.16;filter:invert(1)}
+:root[data-theme="dark"] .theme-toggle .theme-sun{display:none}
+:root[data-theme="dark"] .theme-toggle .theme-moon{display:block}   /* dark shows the moon */
+:root[data-theme="dark"] .promptform input,
+:root[data-theme="dark"] .asearch,
+:root[data-theme="dark"] .afield input,
+:root[data-theme="dark"] .afield select{background:var(--card);color:var(--ink)}
+:root[data-theme="dark"] .warn{color:#F2C57C;background:#342C20;border-color:#8D7445}
+:root[data-theme="dark"] .mrow.danger,
+:root[data-theme="dark"] .qctl .hideq,
+:root[data-theme="dark"] .amsg.bad{color:#FF9A91}
+@media (hover:hover){
+  :root[data-theme="dark"] .iconbtn:hover{background:#243244}
+}
+@media (min-width:760px){
+  :root[data-theme="dark"] body{background:color-mix(in srgb,var(--paper) 78%,#070A0E)}
+}
 </style>
 </head>
 <body>
@@ -881,23 +1301,29 @@ body::before{
     <button class="iconbtn burger" id="menu" aria-label="Open library"><i></i><i></i><i></i></button>
     <div class="brand">JOT</div>
     <div class="when" id="clock"></div>
+    <button class="iconbtn theme-toggle" id="themeToggle" type="button" data-theme-toggle aria-label="Switch to dark mode" aria-pressed="false">
+      <svg class="ic theme-moon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.6 14.1A8 8 0 0 1 9.9 3.4 9 9 0 1 0 20.6 14.1Z"/></svg>
+      <svg class="ic theme-sun" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"/></svg>
+    </button>
   </header>
 
   <main id="home"></main>
 
   <section id="pad">
     <div id="padtop">
-      <button class="iconbtn" id="back" aria-label="Save and go back"></button>
       <div id="padq"><div class="pcat" id="pcat"></div><div class="pq" id="pq"></div></div>
-      <button class="iconbtn" id="done" aria-label="Save this jot">&#10003;</button>
+      <button class="iconbtn" id="done" aria-label="Save this jot">DONE</button>
     </div>
     <div id="lines" contenteditable="true" spellcheck="true"
          role="textbox" aria-multiline="true" aria-label="Jot text"></div>
-    <!-- raised by a tap in the text, so save and back are always within thumb
-         reach no matter how far down the page he is -->
+    <nav class="scrollrail" id="scrollrail" aria-label="Move through this jot">
+      <button type="button" id="jumpFirst" aria-label="Go to first jot"></button>
+      <button type="button" id="jumpLatest" aria-label="Go to latest jot"></button>
+    </nav>
+    <!-- raised by a tap in the text, so Newest is always within thumb reach
+         without covering the line he is writing -->
     <div class="padbar" id="padbar">
       <button type="button" id="pbTop">&#8593;&nbsp; NEWEST</button>
-      <button type="button" id="pbDone" class="pri">&#10003;&nbsp; DONE</button>
     </div>
   </section>
 </div>
@@ -906,6 +1332,10 @@ body::before{
   <div id="libtop">
     <button class="iconbtn" id="libclose" aria-label="Close">&#10005;</button>
     <div id="libtitle">LIBRARY</div>
+    <button class="iconbtn theme-toggle" id="libThemeToggle" type="button" data-theme-toggle aria-label="Switch to dark mode" aria-pressed="false">
+      <svg class="ic theme-moon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.6 14.1A8 8 0 0 1 9.9 3.4 9 9 0 1 0 20.6 14.1Z"/></svg>
+      <svg class="ic theme-sun" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"/></svg>
+    </button>
   </div>
   <div id="libbody"></div>
 </section>
@@ -954,17 +1384,6 @@ const KEY = "jot.v1";
    ⚠⚠ THE KEYS DO NOT CHANGE even where the wording did. `fulfillment` stays
    `fulfillment` in storage. Renaming a key orphans every row already written
    under it, and the display name is free while the key is not. */
-const PROMPTS = {
-  plus:        "What's on your mind?",
-  food:        "What did you just eat?",
-  body:        "What did your body just do?",
-  social:      "Who did you just see?",
-  work:        "What are you building?",
-  gratitude:   "What are you grateful for?",
-  avoid:       "What are you avoiding?",
-  fulfillment: "What made today count?"
-};
-
 /* ------------------------------------------------------------- day parts ---
    ★★ EIGHT BUCKETS OF THREE HOURS. His instruction, 2026-08-14: "more
    consistent hours ... maybe all 3 hours?" He spotted that midday was the
@@ -988,9 +1407,9 @@ const DAYPARTS = [
   [ 360, "morning",    "Morning Muse"    ],   // 06:00 - 08:59
   [ 540, "midmorning", "Brunch Brief"    ],   // 09:00 - 11:59
   [ 720, "midday",     "Noon Doodle"     ],   // 12:00 - 14:59
-  [ 900, "afternoon",  "Afternoon Aside" ],   // 15:00 - 17:59
-  [1080, "evening",    "Evening Entry"   ],   // 18:00 - 20:59
-  [1260, "night",      "Night Note"      ],   // 21:00 - 23:59
+  [ 900, "afternoon",  "Afternoon Spark" ],   // 15:00 - 17:59
+  [1080, "evening",    "Evening Echo"     ],   // 18:00 - 20:59
+  [1260, "night",      "Nightcap Note"    ],   // 21:00 - 23:59
 ];
 const partOf = d => DAYPARTS.filter(p => d.getHours()*60 + d.getMinutes() >= p[0]).pop();
 
@@ -1092,8 +1511,11 @@ let STORE_LOCKED = null;      /* non-null = a reason writes are refused */
    this file. If another writer is ever added it MUST bump STORE_GEN or the
    app will read stale data - which is a correctness bug, not a speed one. */
 let _storeCache = null, STORE_GEN = 0;
+let DEMO_STORE = null;
+const demoActive = () => !!DEMO_STORE;
 
 const load = () => {
+  if (demoActive()) return DEMO_STORE;
   if (_storeCache && _storeCache.gen === STORE_GEN) return _storeCache.value;
   const v = _loadRaw();
   _storeCache = { gen: STORE_GEN, value: v };
@@ -1127,6 +1549,7 @@ const _loadRaw = () => {
 };
 
 const save = s => {
+  if (demoActive()) return false;
   if (STORE_LOCKED){ bannerUp(); return false; }
   try {
     localStorage.setItem(KEY, JSON.stringify(s));
@@ -1205,6 +1628,9 @@ function vector(j){
 }
 
 const $ = s => document.querySelector(s);
+$("#done").innerHTML = I.check;
+$("#jumpFirst").innerHTML = I["chevron-down"];
+$("#jumpLatest").innerHTML = I["chevron-down"];
 const home=$("#home"), pad=$("#pad"), lib=$("#lib"), libBody=$("#libbody");
 let live = null;
 
@@ -1215,10 +1641,189 @@ let live = null;
    day as a whole, so it reads as the closing question. */
 /* the label under the hood vs the label on screen. `plus` and `fulfillment`
    keep their storage keys forever; only what a person reads changes. */
-const CATLABEL = { plus:"LOOSE", fulfillment:"DAY", gratitude:"GRATEFUL", avoid:"AVOIDING" };
-const label = c => CATLABEL[c] || c.toUpperCase();
-const DECK = ["plus","food","body","social","work","gratitude","avoid","fulfillment"];
-const deck = () => DECK;
+/* PROMPT_DECK_PURE_START */
+const BUILTIN_PROMPT_IDS = ["plus","food","body","social","work","gratitude","avoid","fulfillment"];
+const BUILTIN_PROMPT_DEFINITIONS = {
+  plus:        { label:"THOUGHTS", prompt:"What's on your mind?" },
+  food:        { label:"FOOD",     prompt:"What did you just eat?" },
+  body:        { label:"BODY",     prompt:"What did your body just do?" },
+  social:      { label:"SOCIAL",   prompt:"Who did you just see?" },
+  work:        { label:"WORK",     prompt:"What are you building?" },
+  gratitude:   { label:"GRATEFUL", prompt:"What are you grateful for?" },
+  avoid:       { label:"AVOIDING", prompt:"What are you avoiding?" },
+  fulfillment: { label:"DAY",      prompt:"What made today count?" }
+};
+
+function defaultPromptDeck(){
+  return {
+    version: 1,
+    items: BUILTIN_PROMPT_IDS.map(id => ({
+      id,
+      label: BUILTIN_PROMPT_DEFINITIONS[id].label,
+      prompt: BUILTIN_PROMPT_DEFINITIONS[id].prompt,
+      kind: "builtin",
+      active: true,
+      created_at: null
+    }))
+  };
+}
+
+function validPromptText(value, max){
+  return typeof value === "string" && value.trim().length > 0 && value.trim().length <= max;
+}
+
+function normalizePromptDeck(raw){
+  if (!raw || raw.version !== 1 || !Array.isArray(raw.items)) return defaultPromptDeck();
+
+  const seen = new Set();
+  const items = [];
+  for (const candidate of raw.items){
+    if (!candidate || typeof candidate.id !== "string") continue;
+    const id = candidate.id.trim();
+    if (!id || seen.has(id)) continue;
+    const isBuiltin = BUILTIN_PROMPT_IDS.includes(id);
+    if (isBuiltin){
+      const definition = BUILTIN_PROMPT_DEFINITIONS[id];
+      items.push({ id, label:definition.label, prompt:definition.prompt, kind:"builtin", active:candidate.active !== false, created_at:null });
+      seen.add(id);
+      continue;
+    }
+    if (candidate.kind !== "custom" || !validPromptText(candidate.label, 24) || !validPromptText(candidate.prompt, 160)) continue;
+    items.push({
+      id,
+      label: candidate.label.trim().toUpperCase(),
+      prompt: candidate.prompt.trim(),
+      kind: "custom",
+      active: candidate.active !== false,
+      created_at: typeof candidate.created_at === "string" ? candidate.created_at : null
+    });
+    seen.add(id);
+  }
+
+  for (const id of BUILTIN_PROMPT_IDS){
+    if (seen.has(id)) continue;
+    const definition = BUILTIN_PROMPT_DEFINITIONS[id];
+    items.push({ id, label:definition.label, prompt:definition.prompt, kind:"builtin", active:false, created_at:null });
+  }
+  return { version:1, items };
+}
+
+function ensurePromptDeck(store){
+  return { ...store, prompt_deck:normalizePromptDeck(store && store.prompt_deck) };
+}
+
+function movePromptItem(deck, id, direction){
+  const normalized = normalizePromptDeck(deck);
+  const items = normalized.items.slice();
+  const from = items.findIndex(item => item.id === id);
+  const to = Math.max(0, Math.min(items.length - 1, from + Math.sign(direction)));
+  if (from < 0 || from === to) return normalized;
+  const [item] = items.splice(from, 1);
+  items.splice(to, 0, item);
+  return { version:1, items };
+}
+
+function moveActivePromptItem(deck, id, direction){
+  const normalized = normalizePromptDeck(deck);
+  const items = normalized.items.slice();
+  const activeIndexes = items.map((item, index) => item.active ? index : -1).filter(index => index >= 0);
+  const activePosition = activeIndexes.findIndex(index => items[index].id === id);
+  const targetPosition = activePosition + Math.sign(direction);
+  if (activePosition < 0 || targetPosition < 0 || targetPosition >= activeIndexes.length) return normalized;
+  const from = activeIndexes[activePosition], to = activeIndexes[targetPosition];
+  [items[from], items[to]] = [items[to], items[from]];
+  return { version:1, items };
+}
+
+function reorderActivePromptItem(deck, id, targetId, placement="before"){
+  const normalized = normalizePromptDeck(deck);
+  if (id === targetId) return normalized;
+  const items = normalized.items.slice();
+  const from = items.findIndex(item => item.id === id && item.active);
+  const target = items.find(item => item.id === targetId && item.active);
+  if (from < 0 || !target) return normalized;
+  const [item] = items.splice(from, 1);
+  const targetIndex = items.findIndex(candidate => candidate.id === targetId);
+  items.splice(targetIndex + (placement === "after" ? 1 : 0), 0, item);
+  return { version:1, items };
+}
+
+function setPromptActive(deck, id, active){
+  const normalized = normalizePromptDeck(deck);
+  return {
+    version: 1,
+    items: normalized.items.map(item => item.id === id ? { ...item, active:!!active } : item)
+  };
+}
+
+function addCustomPrompt(deck, label, prompt, id, createdAt){
+  const normalized = normalizePromptDeck(deck);
+  if (normalized.items.filter(item => item.kind === "custom").length >= 2)
+    return { deck:normalized, error:"custom-limit" };
+  if (!validPromptText(label, 24) || !validPromptText(prompt, 160))
+    return { deck:normalized, error:"invalid" };
+  if (typeof id !== "string" || !id.trim() || normalized.items.some(item => item.id === id.trim()))
+    return { deck:normalized, error:"duplicate" };
+  return {
+    error: null,
+    deck: {
+      version: 1,
+      items: normalized.items.concat({
+        id: id.trim(),
+        label: label.trim().toUpperCase(),
+        prompt: prompt.trim(),
+        kind: "custom",
+        active: true,
+        created_at: typeof createdAt === "string" ? createdAt : null
+      })
+    }
+  };
+}
+
+function resetPromptOrder(deck){
+  const normalized = normalizePromptDeck(deck);
+  const byId = new Map(normalized.items.map(item => [item.id, item]));
+  const builtins = BUILTIN_PROMPT_IDS.map(id => byId.get(id));
+  const customs = normalized.items.filter(item => item.kind === "custom");
+  return { version:1, items:builtins.concat(customs) };
+}
+
+function mergePromptDeck(localDeck, importedDeck){
+  const local = normalizePromptDeck(localDeck);
+  if (!importedDeck || importedDeck.version !== 1 || !Array.isArray(importedDeck.items)) return local;
+  const known = new Set(local.items.map(item => item.id));
+  const additions = [];
+  for (const item of importedDeck.items){
+    if (!item || typeof item.id !== "string" || item.kind !== "custom") continue;
+    const id = item.id.trim();
+    if (!id || known.has(id)) continue;
+    if (!validPromptText(item.label, 24) || !validPromptText(item.prompt, 160)) continue;
+    additions.push({
+      id, label:item.label.trim().toUpperCase(), prompt:item.prompt.trim(),
+      kind:"custom", active:false, created_at:typeof item.created_at === "string" ? item.created_at : null
+    });
+    known.add(id);
+  }
+  return { version:1, items:local.items.concat(additions) };
+}
+/* PROMPT_DECK_PURE_END */
+
+/* One canonical built-in registry feeds both the legacy classifier and the
+   configurable Home deck, so prompt wording and labels cannot drift. */
+const PROMPTS = Object.fromEntries(BUILTIN_PROMPT_IDS.map(id => [id, BUILTIN_PROMPT_DEFINITIONS[id].prompt]));
+const CATLABEL = Object.fromEntries(BUILTIN_PROMPT_IDS.map(id => [id, BUILTIN_PROMPT_DEFINITIONS[id].label]));
+const DECK = BUILTIN_PROMPT_IDS;
+const allPromptItems = () => normalizePromptDeck(load().prompt_deck).items;
+const activePromptItems = () => allPromptItems().filter(item => item.active);
+const promptItem = id => allPromptItems().find(item => item.id === id) || null;
+const label = c => promptItem(c)?.label || CATLABEL[c] || String(c).toUpperCase();
+const promptFor = c => promptItem(c)?.prompt || PROMPTS[c] || "What's on your mind?";
+const deck = () => activePromptItems().map(item => item.id);
+const allCategoryIds = () => {
+  const ids = new Set(allPromptItems().map(item => item.id));
+  for (const jot of load().jots) if (typeof jot.category === "string" && jot.category) ids.add(jot.category);
+  return [...ids];
+};
 
 /* "AUG 14th 2026" */
 /* "FRI AUG 14, 2026" - his format. ⚠ Grouping still SORTS on v.date, because
@@ -1239,6 +1844,30 @@ const longDate = d => `${MON[d.getMonth()]} ${ord(d.getDate())} ${d.getFullYear(
    away. He expressed a preference, not a deletion, and the reversible reading
    is the correct one.
    ⚠ He did NOT rename "Brunch Brief", so the placeholder stands as the name. */
+
+/* ------------------------------------------------- imported entries ---
+   His ask, 2026-08-18: "i want all my journals turned jots - make sure
+   theres an option to view and not view those imported entries."
+
+   646 jots converted from the 2022-2024 notebooks all carry
+   source = "import:journal". Nothing he has ever TYPED starts with that,
+   so this filter cannot swallow a jot he wrote himself.
+
+   *** VIEWS FOLLOW THE TOGGLE. BEHAVIOUR NEVER DOES. ***
+   renderLib and renderStats are things he LOOKS at, so they respect it.
+   lexicons() is not - it seeds the live prompts, and letting 2022
+   vocabulary drive what the app suggests today would be a silent change
+   to how the app behaves, controlled by a switch that says "view".
+   So lexicons ALWAYS excludes imported, toggle or not.
+
+   Lookups by jot_id are never filtered either. Hiding is a view concern;
+   a hidden jot must still be findable, editable and exportable. */
+const SHOW_IMPORTED = "jot.showImported";
+const isImported  = j => typeof j?.source === "string" && j.source.startsWith("import:journal");
+const showImported = () => localStorage.getItem(SHOW_IMPORTED) === "1";
+const ownJots     = a => a.filter(j => !isImported(j));
+const viewJots    = a => showImported() ? a : ownJots(a);
+
 const NAMING = "jot.naming";
 const ROTATE_MS = 3 * 60 * 1000;
 const mode = () => localStorage.getItem(NAMING) || "fun";
@@ -1285,11 +1914,78 @@ function todayCount(cat){
                     .reduce((n, j) => n + j.paragraphs.length, 0);
 }
 
+let promptEditMode = false, promptAddMode = false, pendingHidePrompt = null, draggedPromptId = null;
+
+function persistPromptDeck(next){
+  const st = load();
+  st.prompt_deck = next;
+  if (save(st)) renderHome();
+}
+
+function smallDeckButton(text, className="deckbtn"){
+  const button = document.createElement("button");
+  button.type = "button"; button.className = className; button.textContent = text;
+  return button;
+}
+
+function renderPromptTools(){
+  const tools = document.createElement("div");
+  tools.className = "decktools";
+  const edit = smallDeckButton(promptEditMode ? "Done editing" : "Edit questions", promptEditMode ? "deckbtn pri" : "deckbtn");
+  edit.addEventListener("click", () => {
+    promptEditMode = !promptEditMode; promptAddMode = false; pendingHidePrompt = null; renderHome();
+  });
+  if (promptEditMode){
+    const customCount = allPromptItems().filter(item => item.kind === "custom").length;
+    const add = smallDeckButton(customCount >= 2 ? "2 of 2 added" : "Add question");
+    add.disabled = customCount >= 2;
+    add.addEventListener("click", () => { promptAddMode = !promptAddMode; renderHome(); });
+    const reset = smallDeckButton("Reset order");
+    reset.addEventListener("click", () => persistPromptDeck(resetPromptOrder(load().prompt_deck)));
+    tools.append(add, reset);
+  }
+  tools.append(edit);
+  return tools;
+}
+
+function renderPromptForm(){
+  const form = document.createElement("form");
+  form.className = "promptform";
+  const category = document.createElement("input");
+  category.maxLength = 24; category.placeholder = "CATEGORY"; category.setAttribute("aria-label", "New category name");
+  const question = document.createElement("input");
+  question.maxLength = 160; question.placeholder = "QUESTION"; question.setAttribute("aria-label", "New question");
+  const add = smallDeckButton("Add", "deckbtn pri");
+  const cancel = smallDeckButton("Cancel");
+  cancel.addEventListener("click", e => { e.preventDefault(); promptAddMode = false; renderHome(); });
+  const error = document.createElement("div"); error.className = "decknote"; error.style.gridColumn = "1 / -1";
+  error.setAttribute("role", "status"); error.setAttribute("aria-live", "polite");
+  form.addEventListener("submit", e => {
+    e.preventDefault();
+    const result = addCustomPrompt(load().prompt_deck, category.value, question.value,
+      "custom_" + uid(), iso(new Date()));
+    if (result.error){
+      error.textContent = result.error === "custom-limit"
+        ? "Two added questions is the current limit. Hidden questions still count."
+        : "Add both a short category and a question.";
+      return;
+    }
+    promptAddMode = false;
+    persistPromptDeck(result.deck);
+  });
+  form.append(category, question, add, cancel, error);
+  return form;
+}
+
 function renderHome(){
   pad.classList.remove("on"); home.style.display="flex"; live=null;
   home.innerHTML = "";
 
-  for (const cat of deck()){
+  home.appendChild(renderPromptTools());
+
+  const visibleItems = activePromptItems();
+  for (const item of visibleItems){
+    const cat = item.id, prompt = item.prompt;
     const n = todayCount(cat);
     /* ⚠ THE BOX IS A CONTROL, NOT A STATUS LIGHT (his ruling, 2026-08-14).
        My first version gave one element two jobs - tap target AND state
@@ -1305,9 +2001,65 @@ function renderHome(){
     const row = document.createElement("div");
     row.className = "task" + (n > 0 ? " has" : "");
 
+    if (promptEditMode){
+      row.className += " manage-task";
+      row.draggable = true;
+      row.dataset.promptId = cat;
+      row.setAttribute("aria-label", "Drag to reorder " + item.label + ". Move buttons are also available.");
+      const grip = document.createElement("span"); grip.className = "qgrip"; grip.setAttribute("aria-hidden", "true");
+      const copy = document.createElement("div");
+      copy.className = "qcopy";
+      const category = document.createElement("b"); category.textContent = item.label;
+      const question = document.createElement("span"); question.textContent = prompt;
+      copy.append(category, question);
+
+      const controls = document.createElement("div"); controls.className = "qctl";
+      const up = smallDeckButton("↑", ""); up.setAttribute("aria-label", "Move " + item.label + " up");
+      const down = smallDeckButton("↓", ""); down.setAttribute("aria-label", "Move " + item.label + " down");
+      up.disabled = item === visibleItems[0]; down.disabled = item === visibleItems[visibleItems.length - 1];
+      up.addEventListener("click", () => persistPromptDeck(moveActivePromptItem(load().prompt_deck, cat, -1)));
+      down.addEventListener("click", () => persistPromptDeck(moveActivePromptItem(load().prompt_deck, cat, 1)));
+      const hide = smallDeckButton(pendingHidePrompt === cat ? "Hide?" : "Hide", "hideq");
+      hide.setAttribute("aria-label", "Hide " + item.label + " question");
+      hide.addEventListener("click", () => {
+        if (pendingHidePrompt !== cat){ pendingHidePrompt = cat; renderHome(); return; }
+        pendingHidePrompt = null;
+        persistPromptDeck(setPromptActive(load().prompt_deck, cat, false));
+      });
+      controls.append(up, down, hide);
+      row.addEventListener("dragstart", event => {
+        draggedPromptId = cat;
+        row.classList.add("dragging");
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", cat);
+      });
+      row.addEventListener("dragend", () => {
+        draggedPromptId = null;
+        document.querySelectorAll(".manage-task").forEach(node => node.classList.remove("dragging", "drop-before", "drop-after"));
+      });
+      row.addEventListener("dragover", event => {
+        if (!draggedPromptId || draggedPromptId === cat) return;
+        event.preventDefault();
+        const bounds = row.getBoundingClientRect();
+        const placement = event.clientY >= bounds.top + bounds.height / 2 ? "after" : "before";
+        row.classList.toggle("drop-before", placement === "before");
+        row.classList.toggle("drop-after", placement === "after");
+      });
+      row.addEventListener("dragleave", () => row.classList.remove("drop-before", "drop-after"));
+      row.addEventListener("drop", event => {
+        event.preventDefault();
+        const from = draggedPromptId || event.dataTransfer.getData("text/plain");
+        const placement = row.classList.contains("drop-after") ? "after" : "before";
+        if (from && from !== cat) persistPromptDeck(reorderActivePromptItem(load().prompt_deck, from, cat, placement));
+      });
+      row.append(grip, copy, controls);
+      home.appendChild(row);
+      continue;
+    }
+
     const box = document.createElement("button");
     box.type = "button"; box.className = "box";
-    box.setAttribute("aria-label", "Open " + PROMPTS[cat] +
+    box.setAttribute("aria-label", "Open " + prompt +
       (n ? " (" + n + " today)" : ""));
     /* ★ EVERY box carries a +, his call. A box that is a CONTROL should look
        like one - a plus says expand, an empty square says tick me, and that
@@ -1316,8 +2068,8 @@ function renderHome(){
 
     const seed = document.createElement("input");
     seed.className = "seed"; seed.type = "text"; seed.value = "";
-    seed.placeholder = PROMPTS[cat];
-    seed.setAttribute("aria-label", PROMPTS[cat]);
+    seed.placeholder = prompt;
+    seed.setAttribute("aria-label", prompt);
     /* ★ HIS TOUCH, AND IT IS THE GOOD ONE: start typing on the row and it
        maximises with the characters already carried through. The handoff is
        the whole trick - drop the first keystrokes and it feels broken. */
@@ -1347,6 +2099,27 @@ function renderHome(){
     home.appendChild(row);
   }
 
+  if (promptEditMode){
+    const hidden = allPromptItems().filter(item => !item.active);
+    if (hidden.length){
+      const section = document.createElement("div"); section.className = "hiddenprompts";
+      const heading = document.createElement("b"); heading.textContent = "Hidden questions · categories and history kept";
+      section.appendChild(heading);
+      for (const item of hidden){
+        const row = document.createElement("div"); row.className = "hiddenrow";
+        const text = document.createElement("span"); text.textContent = item.label + " · " + item.prompt;
+        const restore = smallDeckButton("Restore");
+        restore.addEventListener("click", () => persistPromptDeck(setPromptActive(load().prompt_deck, item.id, true)));
+        row.append(text, restore); section.appendChild(row);
+      }
+      home.appendChild(section);
+    }
+    if (promptAddMode) home.appendChild(renderPromptForm());
+    const note = document.createElement("div"); note.className = "decknote";
+    note.textContent = "Hiding removes a question from Home only. Its category, tags, and past jots stay available.";
+    home.appendChild(note);
+  }
+
   /* one honest line of state, because the point of the list is visibility */
   const t = new Date(), key = t.getFullYear() + "-" + p2(t.getMonth()+1) + "-" + p2(t.getDate());
   const today = load().jots.filter(j => vector(j).date === key);
@@ -1362,12 +2135,14 @@ function renderHome(){
   home.appendChild(tot);
 
   /* the pencil - opens the free-writing prompt directly */
-  const fab = document.createElement("button");
-  fab.className = "fab";
-  fab.setAttribute("aria-label", "What's on your mind?");
-  fab.innerHTML = I.pencil;
-  fab.addEventListener("click", () => openPad("plus", null));
-  home.appendChild(fab);
+  if (!promptEditMode){
+    const fab = document.createElement("button");
+    fab.className = "fab";
+    fab.setAttribute("aria-label", "What's on your mind?");
+    fab.innerHTML = I.pencil;
+    fab.addEventListener("click", () => openPad("plus", null));
+    home.appendChild(fab);
+  }
 }
 
 /* run a DOM change inside a view transition, or plainly if the browser cannot
@@ -1548,7 +2323,7 @@ function openPad(cat, cardEl){
      record. Writing stays continuous; storage stays atomic. */
   const prior = todaysEntries(cat);
   live = {
-    category: cat, prompt_text: PROMPTS[cat], _open: now,
+    category: cat, prompt_text: promptFor(cat), _open: now,
     _resumed: prior.length > 0,
     paragraphs: prior.map(j => ({
       ts: j.opened_at,
@@ -1571,7 +2346,7 @@ function openPad(cat, cardEl){
   vt ? vt.finished.then(clear, clear) : clear();
 
   $("#pcat").textContent = label(cat);
-  $("#pq").textContent = PROMPTS[cat];
+  $("#pq").textContent = promptFor(cat);
   drawLines();
 
   /* ★ the nudge only appears on a genuinely blank page. Coming back to a jot
@@ -1617,12 +2392,9 @@ function composeToTop(){
   const rows = [...lines.querySelectorAll(".row")];
   const last = rows[rows.length - 1];
   if (!last) return;
-  /* ⚠⚠ SCROLL WHATEVER ACTUALLY SCROLLS. #lines is `flex:1; overflow-y:auto`,
-     which LOOKS like it scrolls - but #app is min-height:100dvh, not height,
-     so the column grows past the viewport and the PAGE takes the scroll while
-     #lines reports scrollHeight === clientHeight.
-     ★ Measured, not reasoned: the first version set lines.scrollTop and
-     nothing moved, because there was no range on that element to move. */
+  /* #app now has a definite viewport height, so #lines owns the normal scroll
+     range on touch and desktop. Keep the fallback for older engines that may
+     still size a contenteditable flex child against its content. */
   if (lines.scrollHeight > lines.clientHeight + 4){
     lines.scrollTop = Math.max(0, last.offsetTop - 6);
   } else {
@@ -1650,24 +2422,42 @@ function composeToTop(){
     e.preventDefault();
     composeToTop(); focusEnd(); hide();
   });
-  $("#pbDone").addEventListener("click", e => {
-    e.preventDefault();
-    hide();
-    $("#done").click();     /* one save path, never a second copy of it */
+})();
+
+/* Native scrollbars make the ruled sheet read like a boxed editor. Keep
+   wheel, trackpad, keyboard, and touch scrolling native, then expose the two
+   useful destinations as a small Codex-like edge control. */
+(function scrollPositionNav(){
+  const rail = $("#scrollrail");
+  const first = $("#jumpFirst");
+  const latest = $("#jumpLatest");
+  if (!rail || !first || !latest) return;
+
+  const refresh = () => {
+    const overflow = lines.scrollHeight > lines.clientHeight + 4;
+    const end = Math.max(0, lines.scrollHeight - lines.clientHeight);
+    rail.classList.toggle("ready", overflow);
+    first.disabled = !overflow || lines.scrollTop <= 4;
+    latest.disabled = !overflow || lines.scrollTop >= end - 4;
+  };
+
+  first.addEventListener("click", () => lines.scrollTo({ top:0, behavior:"smooth" }));
+  latest.addEventListener("click", () => composeToTop());
+  lines.addEventListener("scroll", refresh, { passive:true });
+  lines.addEventListener("input", refresh);
+  window.addEventListener("resize", refresh, { passive:true });
+  new MutationObserver(refresh).observe(lines, {
+    childList:true,subtree:true,characterData:true
   });
-  /* leaving the pad must never leave the bar hanging over the home screen */
-  $("#back").addEventListener("click", hide);
+  if ("ResizeObserver" in window) new ResizeObserver(refresh).observe(lines);
+  requestAnimationFrame(refresh);
 })();
 
 
-/* ★ His change: the top-left is no longer an escape hatch, it is the same lit
-   plus you tapped to get here, and pressing it SAVES and returns. There is no
-   longer a way to lose what you typed by leaving, which is the correct
-   default for a capture tool. The check does the same thing; two exits, one
-   outcome, nothing destructive on either. */
-$("#back").innerHTML = I.plus;
-$("#back").addEventListener("click", () => { saveAndHome(); });
-/* ⚠⚠ ONE SAVE PATH, USED BY BOTH EXITS. The old handler always PUSHED, which
+/* ★ DONE is the one explicit exit. The top-left plus was a duplicate save
+   control that crowded the prompt; removing it leaves the capture question
+   clear and keeps one unmistakable completion action. */
+/* ⚠⚠ ONE SAVE PATH. The old handler always PUSHED, which
    was correct when every tap made a new jot. Now that reopening a category
    RESUMES today's jot, pushing would write a second row with the same id and
    the day would silently double. Upsert by jot_id, not append. */
@@ -1765,7 +2555,10 @@ function words(j){ return j.paragraphs.reduce((a,p) =>
 
 function openLib(){ lib.classList.add("on"); renderLib(); }
 $("#menu").addEventListener("click", openLib);
-$("#libclose").addEventListener("click", () => lib.classList.remove("on"));
+$("#libclose").addEventListener("click", () => {
+  if (demoActive()) exitDemo(false);
+  lib.classList.remove("on");
+});
 
 /* ---------------------------------------------------------------- the views ---
    ★★★ His spec, 2026-08-14, in one line: "user creates jots - jots can be seen
@@ -1823,7 +2616,8 @@ const GROUPINGS = {
    collapsed except today" could not be expressed at all. `seeded` tracks
    whether the current chain has been planted for this grouping yet. */
 let libView = { group:"day", cat:"all", part:"all", q:"",
-                open:new Set(), seeded:null, groupAuto:true };
+                open:new Set(), seeded:null, groupAuto:true,
+                sections:libraryInitialSections(false) };
 
 /* ★★★ THE DEFAULT GROUPING IS DERIVED FROM THE CORPUS, NOT HARD CODED.
    `group:"day"` above is only the seed for an empty store; autoGroup() replaces
@@ -1895,113 +2689,174 @@ const hits = (j, q) => !q || (
   j.paragraphs.some(p => p.text.toLowerCase().includes(q)) ||
   j.category.toLowerCase().includes(q));
 
+/* LIBRARY_SHOWCASE_PURE_START */
+function libraryInitialSections(demo=false){
+  return { profile:!!demo, transfer:false, archive:false, options:false,
+           search:!!demo, patterns:true };
+}
+
+function librarySectionOpen(key, saved, defaultOpen=false){
+  return Object.prototype.hasOwnProperty.call(saved, key) ? saved[key] : defaultOpen;
+}
+
+function libraryTimelineHeading(demo, total){
+  if (!demo) return null;
+  return {
+    title:"ALL JOTS",
+    meta:`${total.toLocaleString("en-US")} FICTIONAL ${total === 1 ? "JOT" : "JOTS"}`
+  };
+}
+/* LIBRARY_SHOWCASE_PURE_END */
+
+function createLibrarySection(label, sub, key, defaultOpen=false){
+  const details = document.createElement("details");
+  details.className = "libsection";
+  details.open = librarySectionOpen(key, libView.sections, defaultOpen);
+  const summary = document.createElement("summary");
+  const title = document.createElement("span"); title.textContent = label;
+  const meta = document.createElement("span"); meta.className = "section-sub"; meta.textContent = sub || "";
+  const chevron = document.createElement("span"); chevron.className = "section-chevron"; chevron.innerHTML = I["chevron-down"];
+  const panel = document.createElement("div"); panel.className = "libpanel";
+  summary.append(title, meta, chevron); details.append(summary, panel);
+  details.addEventListener("toggle", () => { libView.sections[key] = details.open; });
+  return { details, panel };
+}
+
 function renderLib(){
   const s = load();
   /* ★★ SORT ON THE NEWEST ENTRY, NOT ON WHEN THE JOT WAS OPENED. His report
      2026-08-15: "loose does just have 10:17 - it needs to updated to show
      newest jots with time stamps."
 
-     A jot is CONTINUOUS - one per category per day - so LOOSE opened at
+     A jot is CONTINUOUS - one per category per day - so THOUGHTS opened at
      10:17am and was still being written into at 9:05pm. Sorting and stamping
      on `opened_at` froze it at breakfast and buried the evening entry under a
      1:35pm food note. ⚠ The bug is a direct consequence of the continuous-jot
      model and it appeared the first day he used the app for a full day. */
-  const all = s.jots.slice().sort((a,b) => newestTs(b).localeCompare(newestTs(a)));
+  const nImported = s.jots.reduce((n, j) => n + (isImported(j) ? 1 : 0), 0);
+  const all = viewJots(s.jots).slice().sort((a,b) => newestTs(b).localeCompare(newestTs(a)));
   const w = all.reduce((a,j) => a + words(j), 0);
-  $("#libtitle").textContent = "LIBRARY";
+  $("#libtitle").textContent = demoActive() ? "JOHN DOE · DEMO" : "LIBRARY";
 
   libBody.innerHTML = "";
 
-  /* ★★★ THE LIBRARY OPENS ON HIS JOTS, NOT ON SETTINGS. Measured 2026-08-15:
-     this menu block was 201px of a 812px screen - Profile, Export, Day part
-     names, all sitting ABOVE the search and the filters, so a quarter of the
-     phone was spent before a single jot appeared.
+  /* LIBRARY_ACCORDION_START */
+  const stack = document.createElement("div"); stack.className = "libstack";
 
-     ⚠ That is the single biggest reason the library read as a web page rather
-     than an app. Apps open on content; settings live behind a control. It is
-     now shut by default and toggled from the header. Nothing was removed. */
-  const cog = document.createElement("button");
-  cog.type = "button";
-  cog.className = "cog" + (libView.mopen ? " open" : "");
-  cog.setAttribute("aria-label", libView.mopen ? "Hide options" : "Show options");
-  cog.setAttribute("aria-expanded", String(!!libView.mopen));
-  cog.innerHTML = I.menu + '<span class="fsl">OPTIONS</span>' +
-                  '<span class="fsc">' + I["chevron-down"] + '</span>';
-  cog.onclick = () => { libView.mopen = !libView.mopen; renderLib(); };
-  libBody.appendChild(cog);
+  const profile = createLibrarySection("Profile", demoActive() ? "FICTIONAL · READ ONLY" : "LOCAL ONLY", "profile");
+  if (demoActive()){
+    const card = document.createElement("div"); card.className = "demo-profile";
+    card.innerHTML = '<b>John Doe</b><span>Born Jan 1, 2001 · Grew up in New Jersey</span><span>5 years · Aug 5, 2021 to Aug 4, 2026</span>';
+    const note = document.createElement("div"); note.className = "demo-note";
+    note.textContent = "Fictional demo. Search, filters, reading, and Patterns work; writing and data changes are off.";
+    const exit = document.createElement("button"); exit.className = "mrow danger";   /* red: it leaves the demo (ruled 8/20) */
+    exit.innerHTML = '<span>Exit demo</span><span class="sub">RETURN TO YOUR LOCAL JOTS</span>';
+    exit.onclick = () => exitDemo(true);
+    profile.panel.append(card, note, exit);
+  } else {
+    const profileOpen = document.createElement("button"); profileOpen.className = "mrow";
+    profileOpen.innerHTML = '<span>Open profile</span><span class="sub">NAME AND LOCAL DEVICE</span>';
+    profileOpen.onclick = openAccount;
+    const demoOpen = document.createElement("button"); demoOpen.className = "mrow";
+    demoOpen.innerHTML = '<span>View John Doe demo</span><span class="sub">5 FICTIONAL YEARS</span>';
+    demoOpen.onclick = async () => {
+      demoOpen.disabled = true;
+      const result = await startDemo();
+      demoOpen.disabled = false;
+      if (result.error) alert(result.error);
+    };
+    /* ★ path back to the start screen (ruled 8/20: "add a path to get to that
+       screen from the library"). Clearing the seen-flag and reloading is the
+       honest route: the gate rebuilds exactly as a first visit, and whatever
+       he picks re-stamps the flag. No closure surgery, no duplicate gate. */
+    const startScreen = document.createElement("button"); startScreen.className = "mrow go";   /* green: it starts something (ruled 8/20) */
+    startScreen.innerHTML = '<span>Start screen</span><span class="sub">SIGN IN · SIGN UP · DEMO</span>';
+    startScreen.onclick = () => { localStorage.removeItem(GATEKEY); location.reload(); };
+    profile.panel.append(profileOpen, demoOpen, startScreen);
+  }
+  stack.appendChild(profile.details);
 
-  const menu = document.createElement("div");
-  menu.className = "menu" + (libView.mopen ? "" : " shut");
-  menu.innerHTML =
-    '<button class="mrow" id="mProfile"><span>Profile</span><span class="sub">local only</span></button>' +
-    '<button class="mrow" id="mStats"><span>Patterns</span><span class="sub">WHEN AND WHAT</span></button>' +
-    '<button class="mrow" id="mImport"><span>Import</span><span class="sub">MERGE A FILE IN</span></button>' +
-    '<input type="file" id="mFile" accept="application/json,.json" hidden>' +
-    '<button class="mrow" id="mExport"><span>Export</span><span class="sub">' +
-      all.length + " " + (all.length === 1 ? "JOT" : "JOTS") + ", " +
-      w + " " + (w === 1 ? "WORD" : "WORDS") + '</span></button>' +
-    '<button class="mrow" id="mNaming"><span>Day part names</span><span class="sub">' +
-      mode().toUpperCase() +
-      (mode() === "rotate" ? " &#183; " + (showingFun() ? "FUN" : "GENERIC") : "") +
-      '</span></button>' +
-    '';
-  /* ⚠⚠ CLEAR ALL REMOVED, his call 2026-08-14: "remove the clear all button i
-     dont want that there."
-     ★ It was the only destructive control in the app and it sat one tap from
-     Export, in a menu he opens to READ his own entries. A wipe-everything
-     button living next to a read action is a trap regardless of how good its
-     confirm dialog is.
-     ⚠ Consequence, stated rather than discovered later: there is now NO WAY to
-     delete a jot from inside the app. That is the correct default for a
-     capture tool, but it means a mis-typed entry stays until an edit path
-     exists. Named in the README as a known gap, not silently accepted. */
-  libBody.appendChild(menu);
-
-  menu.querySelector("#mProfile").onclick = () => alert(
-    "Profile\n\nNothing to sign into yet. Every jot lives on this device only.\n" +
-    "Accounts exist for other people. Add them when there are other people.");
-  menu.querySelector("#mStats").onclick = renderStats;
-  menu.querySelector("#mExport").onclick = doExport;
-  /* the visible row drives the hidden file input, so the control reads like
-     every other row in the menu instead of a browser-default file button */
-  menu.querySelector("#mImport").onclick = () => menu.querySelector("#mFile").click();
-  menu.querySelector("#mFile").onchange = e => {
-    const f = e.target.files && e.target.files[0];
-    if (f) doImport(f);
-    e.target.value = "";           /* so the same file can be picked twice */
+  const transfer = createLibrarySection("Import / Export", `${all.length} ${all.length === 1 ? "JOT" : "JOTS"}`, "transfer");
+  const importButton = document.createElement("button"); importButton.className = "mrow";
+  importButton.innerHTML = '<span>Import</span><span class="sub">MERGE A FILE IN</span>';
+  const fileInput = document.createElement("input"); fileInput.type = "file"; fileInput.accept = "application/json,.json"; fileInput.hidden = true;
+  importButton.onclick = () => fileInput.click();
+  fileInput.onchange = event => {
+    const file = event.target.files && event.target.files[0];
+    if (file) doImport(file);
+    event.target.value = "";
   };
-  menu.querySelector("#mNaming").onclick = () => {
+  const exportButton = document.createElement("button"); exportButton.className = "mrow";
+  exportButton.innerHTML = `<span>Export</span><span class="sub">${w} ${w === 1 ? "WORD" : "WORDS"}</span>`;
+  exportButton.onclick = doExport;
+  if (demoActive()){
+    importButton.disabled = true; exportButton.disabled = true;
+    importButton.querySelector(".sub").textContent = "OFF IN DEMO";
+    exportButton.querySelector(".sub").textContent = "OFF IN DEMO";
+  }
+  transfer.panel.append(importButton, exportButton, fileInput); stack.appendChild(transfer.details);
+
+  const archive = createLibrarySection("Journal archive", nImported ? `${nImported} IMPORTED` : "NONE IMPORTED", "archive");
+  const archiveButton = document.createElement("button"); archiveButton.className = "mrow";
+  archiveButton.innerHTML = '<span>Imported journals</span><span class="sub">' +
+    (nImported ? (showImported() ? "SHOWING" : "HIDDEN") : "NONE IMPORTED") + '</span>';
+  if (demoActive() || !nImported){ archiveButton.disabled = true; archiveButton.style.opacity = ".45"; }
+  else archiveButton.onclick = () => {
+    localStorage.setItem(SHOW_IMPORTED, showImported() ? "0" : "1"); renderLib();
+  };
+  archive.panel.appendChild(archiveButton); stack.appendChild(archive.details);
+
+  const options = createLibrarySection("Options", mode().toUpperCase(), "options");
+  const namingButton = document.createElement("button"); namingButton.className = "mrow";
+  namingButton.innerHTML = '<span>Day part names</span><span class="sub">' + mode().toUpperCase() +
+    (mode() === "rotate" ? " · " + (showingFun() ? "FUN" : "GENERIC") : "") + '</span>';
+  namingButton.onclick = () => {
     const next = { rotate:"generic", generic:"fun", fun:"rotate" }[mode()];
     localStorage.setItem(NAMING, next); clock(); renderLib();
   };
+  options.panel.appendChild(namingButton); stack.appendChild(options.details);
 
-  if (!all.length){
-    const e = document.createElement("div");
-    e.className = "empty"; e.textContent = "No jots yet. Close this and tap a prompt.";
-    libBody.appendChild(e); return;
-  }
-
-  /* --- search ------------------------------------------------------------- */
+  const search = createLibrarySection("Search", libView.q ? "FILTERING" : "EVERY JOT", "search");
   const sb = document.createElement("input");
   sb.className = "srch"; sb.type = "search"; sb.value = libView.q;
-  sb.placeholder = "search every jot";
-  sb.setAttribute("aria-label", "Search every jot");
-  /* ★ DEBOUNCED. Every keystroke previously ran a full JSON.parse of the
-     store, a whole-corpus scan, vector() on every jot and a complete DOM
-     rebuild - measured at 2,000 jots (about six months at his rate) that lands
-     well past the 100ms responsiveness threshold on a phone.
-     ⚠ 150ms is chosen to be under the ~200ms a person reads as "instant"
-     while still collapsing a burst of typing into one render. */
+  sb.placeholder = "search every jot"; sb.setAttribute("aria-label", "Search every jot");
   sb.oninput = () => {
     clearTimeout(sb._t);
     sb._t = setTimeout(() => {
-      libView.q = sb.value.trim().toLowerCase();
-      renderLib();
-      const n = libBody.querySelector(".srch");
-      if (n){ n.focus(); n.setSelectionRange(n.value.length, n.value.length); }
+      libView.q = sb.value.trim().toLowerCase(); renderLib();
+      const next = libBody.querySelector(".srch");
+      if (next){ next.focus(); next.setSelectionRange(next.value.length, next.value.length); }
     }, 150);
   };
-  libBody.appendChild(sb);
+  search.panel.appendChild(sb); stack.appendChild(search.details);
+
+  const patterns = createLibrarySection("Patterns", "WHEN AND WHAT", "patterns", true);
+  const daysWritten = new Set(all.map(jot => vector(jot).date)).size;
+  const peek = document.createElement("div"); peek.className = "patternpeek";
+  for (const [value, label] of [[all.length,"JOTS"],[w,"WORDS"],[daysWritten,"DAYS"]]){
+    const cell = document.createElement("div"); cell.innerHTML = `<b>${value}</b><span>${label}</span>`; peek.appendChild(cell);
+  }
+  const openPatterns = document.createElement("button"); openPatterns.className = "mrow";
+  openPatterns.innerHTML = '<span>Open full patterns</span><span class="sub">DISTRIBUTIONS</span>';
+  openPatterns.onclick = renderStats;
+  patterns.panel.append(peek, openPatterns); stack.appendChild(patterns.details);
+
+  libBody.appendChild(stack);
+  /* LIBRARY_ACCORDION_END */
+
+  const timelineHeading = libraryTimelineHeading(demoActive(), all.length);
+  if (timelineHeading){
+    const heading = document.createElement("div"); heading.className = "library-timeline-heading";
+    const title = document.createElement("b"); title.textContent = timelineHeading.title;
+    const meta = document.createElement("span"); meta.textContent = timelineHeading.meta;
+    heading.append(title, meta); libBody.appendChild(heading);
+  }
+
+  if (!all.length){
+    const empty = document.createElement("div");
+    empty.className = "empty"; empty.textContent = "No jots yet. Close this and tap a prompt.";
+    libBody.appendChild(empty); return;
+  }
 
   /* --- the grouping selector ---------------------------------------------- */
   /* ★★ THREE FILTER ROWS. Time picks the grouping; category and window narrow
@@ -2119,7 +2974,7 @@ function renderLib(){
      if he wants DAY across five years that is his call and it must stick. */
   filterRow("Time", Object.entries(GROUPINGS).map(([k, g]) => [k, g.label]),
             libView.group, v => { libView.group = v; libView.groupAuto = false; }, "seg");
-  filterRow("Category", [["all","ALL"], ...DECK.map(c => [c, label(c)])],
+  filterRow("Category", [["all","ALL"], ...allCategoryIds().map(c => [c, label(c)])],
             libView.cat, v => libView.cat = v, "chip");
   filterRow("Window", [["all","ALL"], ...DAYPARTS.map(p => [p[1],
               showingFun() ? p[2].toUpperCase() : p[1].toUpperCase()])],
@@ -2307,7 +3162,7 @@ function renderLib(){
 }
 
 /* one jot, its full text, and every bucket it is filed under */
-/* ★★ SUGGESTED BUCKET for LOOSE jots. His spec 2026-08-15: "we can work on
+/* ★★ SUGGESTED BUCKET for THOUGHTS jots. His spec 2026-08-15: "we can work on
    loose given suggested bucket based on all available buckets (not hardcoded
    but whats available at that time)... let user have final say to sort."
 
@@ -2371,7 +3226,7 @@ const toks = s => (String(s).toLowerCase().match(/[a-z']+/g) || [])
 let _lexCache = null;
 function lexicons(){
   if (_lexCache && _lexCache.gen === STORE_GEN) return _lexCache.v;
-  const all = load().jots, out = {};
+  const all = ownJots(load().jots), out = {};   /* never toggle-aware: this seeds live prompts */
   for (const cat of DECK){
     if (cat === "plus") continue;
     const lex = new Map();
@@ -2444,9 +3299,9 @@ function suggest(j){
    distribution, re-experiencing wants "the longest I went without writing" -
    so it is safe to build while that question is still his to answer. */
 function renderStats(){
-  const all = load().jots;
+  const all = viewJots(load().jots);
   libBody.innerHTML = "";
-  $("#libtitle").textContent = "PATTERNS";
+  $("#libtitle").textContent = demoActive() ? "JOHN DOE · PATTERNS" : "PATTERNS";
 
   const back = document.createElement("button");
   back.className = "mrow"; back.style.marginBottom = "10px";
@@ -2532,7 +3387,7 @@ function renderStats(){
   };
 
   chart("BY CATEGORY",
-        DECK.filter(c => byCat.get(c)).map(c => [label(c), byCat.get(c)]));
+        allCategoryIds().filter(c => byCat.get(c)).map(c => [label(c), byCat.get(c)]));
 
   /* ★ day parts in CLOCK order, never sorted by size - the shape of the day is
      the information, and re-ordering it destroys exactly that. */
@@ -2543,7 +3398,7 @@ function renderStats(){
 
 function renderJot(j){
   const v = vector(j);
-  $("#libtitle").textContent = j.prompt_text.toUpperCase();
+  $("#libtitle").textContent = (demoActive() ? "DEMO · " : "") + j.prompt_text.toUpperCase();
   libBody.innerHTML = "";
 
   const back = document.createElement("button");
@@ -2560,10 +3415,10 @@ function renderJot(j){
   vec.innerHTML = chips.map(([k,val]) => `<span class="chip">${k} <b>${val}</b></span>`).join("");
   libBody.appendChild(vec);
 
-  /* ★ the pencilled suggestion - LOOSE jots only, HIS final say. Tapping it
-     re-files the jot under the suggested bucket; leaving it alone keeps LOOSE. */
+  /* ★ the pencilled suggestion - THOUGHTS jots only, HIS final say. Tapping it
+     re-files the jot under the suggested bucket; leaving it alone keeps THOUGHTS. */
   const sg = suggest(j);
-  if (sg){
+  if (sg && !demoActive()){
     const sb = document.createElement("button");
     sb.type = "button"; sb.className = "sgtag";
     sb.innerHTML = `SUGGESTED &nbsp;&#183;&nbsp; <b>${label(sg)}</b> &nbsp;&#183;&nbsp; TAP TO FILE`;
@@ -2658,7 +3513,7 @@ ${j.paragraphs.length} timestamped ${j.paragraphs.length===1?"entry":"entries"}.
   /* ⚠ FOUND 2026-08-15: the delete button above was BUILT and never APPENDED
      - his 8/14 "each jot should be deletable" shipped invisible. It lands
      last, under the entries, where a destructive act belongs. */
-  libBody.appendChild(del);
+  if (!demoActive()) libBody.appendChild(del);
 }
 
 /* ★★★ S4 — IMPORT. There was an export and no way back in, which is what made
@@ -2682,6 +3537,9 @@ function doImport(file){
     const st = load();
     if (STORE_LOCKED) return alert("Writes are paused because the store is "
       + "damaged. Export first, then reload. Nothing changed.");
+    /* Prompt definitions merge by immutable id. Local order and visibility
+       always win; unknown imported definitions arrive hidden for review. */
+    st.prompt_deck = mergePromptDeck(st.prompt_deck, inc.prompt_deck);
 
     const byId = new Map(st.jots.map(j => [j.jot_id, j]));
     let added = 0, merged = 0;
@@ -2737,6 +3595,386 @@ function doExport(){
    ⚠ Registration is guarded and failure is silent on purpose - a service
    worker that cannot install (file:// , no HTTPS, an old browser) must never
    stop the app from opening. Offline is an upgrade, never a dependency. */
+
+/* ==========================================================================
+   ACCOUNT - sign up, sign in, forgot password.
+
+   *** NO SDK, NO CDN, AND THAT IS THE WHOLE POINT.
+   The Supabase JS client is one <script src> away, and adding it would put a
+   network fetch between him and a blank page. jot is ONE FILE with zero
+   external requests precisely so it opens on a train with no signal. Auth
+   talks to the REST endpoints with fetch(), which costs nothing and keeps
+   that property intact.
+
+   !! SIGNING IN IS OPTIONAL AND ALWAYS WILL BE. Signed out, every single
+   thing in this app works exactly as it did before this block existed:
+   localStorage is still the store, capture never waits on a network, and no
+   screen is gated. Sync is a bolt-on, not a login wall.
+
+   ! The publishable key below is PUBLIC BY DESIGN and safe in page source.
+   Row Level Security is the actual gate: every row carries user_id and the
+   policy is user_id = auth.uid(). Without RLS this key would expose every
+   user's writing to anyone who views source, which is why RLS shipped in the
+   very first migration rather than "later".
+   ========================================================================== */
+const SB_URL = "https://owphqpacelnblfvwxutl.supabase.co";
+const SB_KEY = "sb_publishable_866fMRZi0txd-iA3GRso4A_BZhAuaYi";
+const AUTHKEY = "jot.auth";
+
+const auth = {
+  get session(){
+    try { return JSON.parse(localStorage.getItem(AUTHKEY) || "null"); }
+    catch { return null; }
+  },
+  set session(v){
+    if (v) localStorage.setItem(AUTHKEY, JSON.stringify(v));
+    else localStorage.removeItem(AUTHKEY);
+  },
+  get email(){ return auth.session && auth.session.user && auth.session.user.email; },
+  get signedIn(){ return !!(auth.session && auth.session.access_token); }
+};
+
+async function sbAuth(path, body){
+  /* ! Every failure path returns a MESSAGE, never a throw. A capture app must
+     not show a stack trace, and "something went wrong" is not actionable. */
+  let r;
+  try {
+    r = await fetch(SB_URL + "/auth/v1/" + path, {
+      method: "POST",
+      headers: { "apikey": SB_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+  } catch (e) {
+    return { error: "No connection. Your jots are safe on this device." };
+  }
+  let d = null;
+  try { d = await r.json(); } catch (e) {}
+  if (!r.ok){
+    const m = (d && (d.msg || d.error_description || d.message)) || ("HTTP " + r.status);
+    return { error: m };
+  }
+  return { data: d };
+}
+
+async function doSignUp(email, pw){
+  const res = await sbAuth("signup", { email: email, password: pw });
+  if (res.error) return { error: res.error };
+  /* * Supabase returns a session ONLY when email confirmation is off. With it
+     on, `user` comes back with no token and the real next step is his inbox.
+     Saying "signed in" here when he is not is the small lie that costs an
+     hour of confusion later. */
+  if (res.data && res.data.access_token){
+    auth.session = res.data;
+    return { ok: "Account created. You are signed in." };
+  }
+  return { ok: "Account created. Check " + email + " for the confirmation link, then sign in." };
+}
+
+async function doSignIn(email, pw){
+  const res = await sbAuth("token?grant_type=password", { email: email, password: pw });
+  if (res.error) return { error: res.error };
+  auth.session = res.data;
+  return { ok: "Signed in as " + (res.data.user ? res.data.user.email : email) + "." };
+}
+
+async function doRecover(email){
+  const res = await sbAuth("recover", { email: email });
+  /* ! Deliberately the SAME message whether or not the address exists.
+     Different wording would turn this box into a way to test which emails
+     have accounts. */
+  if (res.error) return { error: res.error };
+  return { ok: "If " + email + " has an account, a reset link is on its way." };
+}
+
+function doSignOut(){
+  auth.session = null;
+  /* !! SIGNING OUT MUST NEVER TOUCH jot.v1. His writing is not the session.
+     Clearing the corpus on sign-out would be a data-loss bug wearing the
+     costume of a security feature. */
+  return { ok: "Signed out. Every jot is still on this device." };
+}
+
+/* ── STAYING SIGNED IN ──────────────────────────────────────────────────────
+   !! HIS ASK: "if loggin stay logged in". Storing the session was NOT enough
+   and would have looked fine for about an hour.
+
+   A Supabase access_token EXPIRES (one hour by default). Without a refresh the
+   app would sign him out mid-morning with no explanation and no error - the
+   worst kind of bug, because nothing appears broken, he is just suddenly
+   logged out. The refresh_token is the part that makes "stay logged in" true.
+
+   ! Refresh runs at OPEN and then on a timer, and every failure is silent by
+   design: a dead network must never produce a scary modal on a capture app.
+   If the refresh cannot happen, he stays signed in locally and sync waits. */
+function sbExpired(sess, skewMs){
+  if (!sess || !sess.expires_at) return false;
+  return (sess.expires_at * 1000) - (skewMs || 60000) < Date.now();
+}
+
+async function sbRefresh(){
+  const sess = auth.session;
+  if (!sess || !sess.refresh_token) return false;
+  const res = await sbAuth("token?grant_type=refresh_token",
+                           { refresh_token: sess.refresh_token });
+  if (res.error){
+    /* ! A refresh token is only really dead on an explicit auth failure.
+       A network blip must NOT sign him out - that would mean losing the
+       session every time he opens the app on a train. */
+    if (/invalid|expired|revoked|not found/i.test(res.error)) auth.session = null;
+    return false;
+  }
+  auth.session = res.data;
+  return true;
+}
+
+async function sbEnsureFresh(){
+  if (!auth.signedIn) return false;
+  if (!sbExpired(auth.session)) return true;
+  return await sbRefresh();
+}
+
+/* every 20 minutes, well inside a 60-minute token */
+setInterval(function(){ sbEnsureFresh(); }, 20 * 60 * 1000);
+
+/* ── THE ENTRY PROMPT ───────────────────────────────────────────────────────
+   His ask: "jot should prompt log in or sign up upon entry".
+
+   !! IT PROMPTS, IT DOES NOT GATE, and that difference is deliberate enough to
+   need saying. There is a "Not now" on this screen. Without it, opening jot
+   with no signal would mean no capture - and a capture tool that cannot
+   capture when the network is down has failed at the one moment it matters.
+   ONE line makes it a hard wall if he wants one; it is marked below.
+
+   ! Shown only when signed OUT and only ONCE per install. A prompt that
+   reappears every open is not a prompt, it is a nag, and he would learn to
+   dismiss it without reading. */
+const GATEKEY = "jot.gate.seen";
+
+function resetLibraryView(){
+  libView.group = "day"; libView.cat = "all"; libView.part = "all"; libView.q = "";
+  libView.open = new Set(); libView.seeded = null; libView.groupAuto = true;
+  libView.sections = libraryInitialSections(demoActive());
+}
+
+function validDemoPayload(payload){
+  return !!payload && payload.profile?.id === "john-doe-demo" &&
+    payload.profile?.fictional === true && Array.isArray(payload.jots) &&
+    payload.jots.length > 0 && payload.jots.every(jot =>
+      jot?.source === "demo" && typeof jot.jot_id === "string" &&
+      typeof jot.opened_at === "string" && Array.isArray(jot.paragraphs) &&
+      jot.paragraphs.length === 1 && jot.paragraphs[0]?.source === "demo"
+    );
+}
+
+function freezeDemo(value){
+  if (!value || typeof value !== "object" || Object.isFrozen(value)) return value;
+  Object.freeze(value);
+  Object.values(value).forEach(freezeDemo);
+  return value;
+}
+
+async function startDemo(){
+  if (demoActive()){ lib.classList.add("on"); renderLib(); return { ok:"Demo open." }; }
+  const realBytes = localStorage.getItem(KEY);
+  try {
+    const response = await fetch("./demo/john-doe.json", { cache:"force-cache" });
+    if (!response.ok) throw new Error("Demo file is unavailable.");
+    const payload = await response.json();
+    if (!validDemoPayload(payload)) throw new Error("Demo file did not pass its source and shape checks.");
+    if (localStorage.getItem(KEY) !== realBytes) throw new Error("Your local store changed while the demo loaded. Nothing was replaced.");
+    DEMO_STORE = freezeDemo(payload);
+    promptEditMode = false; promptAddMode = false; pendingHidePrompt = null;
+    resetLibraryView();
+    lib.classList.add("on"); renderLib();
+    return { ok:"John Doe demo loaded." };
+  } catch (error){
+    DEMO_STORE = null;
+    return { error:error?.message || "The demo could not be loaded." };
+  }
+}
+
+function exitDemo(stayInLibrary=true){
+  DEMO_STORE = null;
+  resetLibraryView();
+  if (stayInLibrary){ lib.classList.add("on"); renderLib(); }
+  else renderHome();
+}
+
+async function entryGate(){
+  await sbEnsureFresh();                 /* silent: keeps him signed in */
+  if (auth.signedIn) return;             /* signed in -> straight to writing */
+  if (localStorage.getItem(GATEKEY)) return;   /* <-- DELETE THIS LINE for a hard wall */
+
+  const g = document.createElement("div");
+  g.className = "gate";
+  g.innerHTML =
+    '<div class="gcard">' +
+      '<div class="ghead"><div class="glogo brand">JOT</div>' +
+      '<div class="gside"><div class="gclock" id="gClock"></div>' +
+      '<button class="iconbtn theme-toggle" id="gTheme" type="button" aria-label="Switch theme"></button></div></div>' +
+      '<div class="gsub">Moments are meant to be jotted</div>' +
+      '<div class="gchoices" id="gChoices">' +
+        '<button class="abtn gchoice" id="gUpChoice"><b>Sign up</b><span>Create an account for future sync.</span></button>' +
+        '<button class="abtn gchoice" id="gInChoice"><b>Login</b><span>Use an existing Jot account.</span></button>' +
+        '<button class="abtn gchoice" id="gSkip"><b>Just write</b><span>Keep everything on this device.</span></button>' +
+        '<button class="abtn pri gchoice" id="gDemo"><b>See the demo</b><span>Explore John Doe, age 25.</span></button>' +
+      '</div>' +
+      '<div class="gauth" id="gAuth" hidden>' +
+        '<button class="alink gback" id="gBack">&#8592; Back</button>' +
+        '<div class="lab" id="gAuthTitle">LOGIN</div>' +
+        '<input class="ain" id="gEmail" type="email" placeholder="email" autocomplete="username">' +
+        '<input class="ain" id="gPw" type="password" placeholder="password" autocomplete="current-password">' +
+        '<button class="abtn pri" id="gSubmit">Login</button>' +
+        '<button class="alink" id="gForgot">Forgot password</button>' +
+      '</div>' +
+      '<div class="amsg" id="gMsg"></div>'
+    '</div>';
+  document.body.appendChild(g);
+  /* ★ the gate speaks the home header's language (ruled 8/20): live clock,
+     his fun/generic day-part naming, and the same theme toggle. The toggle
+     PROXIES #themeToggle because attribute delegation ran at boot, before
+     this gate existed; the icon is copied so the two can never drift. */
+  try{
+    var gc = g.querySelector("#gClock");
+    var paintGClock = function(){
+      var nw = new Date(), pt = partOf(nw);
+      gc.innerHTML = longDate(nw) + "<br><span>" + clk(nw) + " " + tzAbbr(nw) +
+        " · <b id=\"gDp\" role=\"button\" tabindex=\"0\" style=\"cursor:pointer\">" + partName(pt) + "</b></span>";
+    };
+    paintGClock(); setInterval(paintGClock, 30000);
+    gc.addEventListener("click", function(e){
+      if (e.target && e.target.id === "gDp"){
+        localStorage.setItem(NAMING, showingFun() ? "generic" : "fun");
+        paintGClock(); if (typeof clock === "function") clock();
+      }
+    });
+    var gt = g.querySelector("#gTheme"), real = document.getElementById("themeToggle");
+    if (gt && real){
+      gt.innerHTML = real.innerHTML;
+      gt.onclick = function(){ real.click(); gt.innerHTML = real.innerHTML; };
+    } else if (gt){ gt.hidden = true; }
+  }catch(e){}
+
+  const msgEl = g.querySelector("#gMsg");
+  const say = function(r){
+    msgEl.textContent = r.error || r.ok || "";
+    msgEl.className = "amsg" + (r.error ? " bad" : " good");
+  };
+  let authMode = "login";
+  const creds = function(){
+    return [g.querySelector("#gEmail").value.trim(), g.querySelector("#gPw").value];
+  };
+  const busy = function(b){
+    g.querySelectorAll("button").forEach(function(x){ x.disabled = b; });
+  };
+  const close = function(){
+    localStorage.setItem(GATEKEY, "1");
+    g.remove();
+  };
+
+  const showAuth = function(modeName){
+    authMode = modeName;
+    g.querySelector("#gChoices").hidden = true;
+    g.querySelector("#gAuth").hidden = false;
+    g.querySelector("#gAuthTitle").textContent = modeName === "signup" ? "SIGN UP" : "LOGIN";
+    g.querySelector("#gSubmit").textContent = modeName === "signup" ? "Sign up" : "Login";
+    g.querySelector("#gForgot").hidden = modeName === "signup";
+    g.querySelector("#gEmail").focus();
+  };
+  g.querySelector("#gUpChoice").onclick = () => showAuth("signup");
+  g.querySelector("#gInChoice").onclick = () => showAuth("login");
+  g.querySelector("#gBack").onclick = function(){
+    g.querySelector("#gAuth").hidden = true; g.querySelector("#gChoices").hidden = false; say({});
+  };
+  g.querySelector("#gSkip").onclick = close;
+  g.querySelector("#gDemo").onclick = async function(){
+    busy(true); say({ ok:"Loading five fictional years..." });
+    const result = await startDemo(); busy(false); say(result);
+    if (result.ok) close();
+  };
+  g.querySelector("#gSubmit").onclick = async function(){
+    const c = creds();
+    if (!c[0] || !c[1]) return say({ error: "Email and password, both." });
+    if (authMode === "signup" && c[1].length < 6) return say({ error: "Password needs at least 6 characters." });
+    busy(true); say({ ok:authMode === "signup" ? "Creating..." : "Signing in..." });
+    const r = authMode === "signup" ? await doSignUp(c[0], c[1]) : await doSignIn(c[0], c[1]);
+    busy(false); say(r);
+    if (r.ok && auth.signedIn) setTimeout(close, 600);
+  };
+  g.querySelector("#gForgot").onclick = async function(){
+    const c = creds();
+    if (!c[0]) return say({ error: "Put your email in the box first." });
+    busy(true); const r = await doRecover(c[0]); busy(false); say(r);
+  };
+}
+
+function openAccount(){
+  const signed = auth.signedIn;
+  const wrap = document.createElement("div");
+  wrap.className = "acct";
+  wrap.innerHTML =
+    '<div class="lab">ACCOUNT</div>' +
+    (signed
+      ? '<div class="who"></div>' +
+        '<div class="note">Signed in. Sync is not wired yet, so nothing has left this device.</div>' +
+        '<button class="abtn" id="aOut">Sign out</button>'
+      : '<div class="note">jot works with no account. Signing in is only for syncing between your phone and laptop later.</div>' +
+        '<input class="ain" id="aEmail" type="email" placeholder="email" autocomplete="username">' +
+        '<input class="ain" id="aPw" type="password" placeholder="password" autocomplete="current-password">' +
+        '<button class="abtn pri" id="aIn">Sign in</button>' +
+        '<button class="abtn" id="aUp">Create account</button>' +
+        '<button class="alink" id="aForgot">Forgot password</button>') +
+    '<div class="amsg" id="aMsg"></div>';
+
+  libBody.innerHTML = "";
+  const back = document.createElement("button");
+  back.className = "cog"; back.type = "button";
+  back.innerHTML = I["arrow-left"] + '<span class="fsl">BACK</span>';
+  back.onclick = renderLib;
+  libBody.appendChild(back);
+  libBody.appendChild(wrap);
+  /* textContent, not innerHTML - an email is user input and must never be
+     interpolated into markup. */
+  if (signed) wrap.querySelector(".who").textContent = auth.email || "";
+
+  const msgEl = wrap.querySelector("#aMsg");
+  const say = function(r){
+    msgEl.textContent = r.error || r.ok || "";
+    msgEl.className = "amsg" + (r.error ? " bad" : " good");
+  };
+  const creds = function(){
+    const e = wrap.querySelector("#aEmail"), p = wrap.querySelector("#aPw");
+    return [e ? e.value.trim() : "", p ? p.value : ""];
+  };
+  const busy = function(b){
+    wrap.querySelectorAll(".abtn").forEach(function(x){ x.disabled = b; });
+  };
+
+  if (signed){
+    wrap.querySelector("#aOut").onclick = function(){ say(doSignOut()); openAccount(); };
+    return;
+  }
+  wrap.querySelector("#aIn").onclick = async function(){
+    const c = creds();
+    if (!c[0] || !c[1]) return say({ error: "Email and password, both." });
+    busy(true); say({ ok: "Signing in..." });
+    const r = await doSignIn(c[0], c[1]); busy(false); say(r);
+    if (r.ok) setTimeout(openAccount, 700);
+  };
+  wrap.querySelector("#aUp").onclick = async function(){
+    const c = creds();
+    if (!c[0] || !c[1]) return say({ error: "Email and password, both." });
+    if (c[1].length < 6) return say({ error: "Password needs at least 6 characters." });
+    busy(true); say({ ok: "Creating..." });
+    const r = await doSignUp(c[0], c[1]); busy(false); say(r);
+  };
+  wrap.querySelector("#aForgot").onclick = async function(){
+    const c = creds();
+    if (!c[0]) return say({ error: "Put your email in the box first." });
+    busy(true); const r = await doRecover(c[0]); busy(false); say(r);
+  };
+}
+
 if ("serviceWorker" in navigator){
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("sw.js").catch(() => {});
@@ -2771,6 +4009,8 @@ if (navigator.storage && navigator.storage.persist){
     .catch(() => {});
 }
 
+window.JotTheme.bind();
+entryGate();
 clock(); setInterval(clock, 15000);   /* < ROTATE_MS so a flip is never missed */
 renderHome();
 </script>
