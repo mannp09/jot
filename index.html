@@ -274,7 +274,46 @@ header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
 #lib.on{display:flex;z-index:120}   /* above the gate overlay (z 99) so the burger works from the start screen too */
 #libtop{display:flex;align-items:center;gap:12px;padding-bottom:12px;
   border-bottom:1px solid var(--rule)}
-#libtitle{flex:1;font-size:var(--f1);font-weight:700;letter-spacing:var(--tr-micro);color:var(--muted)}
+#libtop .brand{cursor:pointer}
+#libtop .when{flex:1;text-align:right}
+/* the page name moved from the bar into the body when the bar became the
+   mirrored header - every page keeps its label, the header stays identical */
+.libpagetitle{font-size:var(--f1);font-weight:700;letter-spacing:var(--tr-micro);
+  color:var(--muted);text-transform:uppercase;padding:2px 2px 10px}
+
+/* ── the drawer ── */
+#scrim{position:fixed;inset:0;z-index:390;background:rgb(0 0 0 / .42);
+  opacity:0;transition:opacity .22s ease;pointer-events:none}
+#scrim.on{opacity:1;pointer-events:auto}
+#drawer{position:fixed;top:0;bottom:0;left:0;z-index:400;
+  width:min(78vw,300px);display:flex;flex-direction:column;gap:4px;
+  background:var(--paper);border-right:1.5px solid var(--rule);
+  padding:18px 14px calc(14px + env(safe-area-inset-bottom));
+  transform:translateX(-102%);transition:transform .24s ease;
+  overflow-y:auto;overscroll-behavior:contain}
+#drawer.on{transform:none;box-shadow:var(--atelier-shadow-up,0 10px 40px rgb(0 0 0 / .25))}
+@media (prefers-reduced-motion: reduce){
+  #drawer,#scrim{transition:none}
+}
+.dhead{padding:2px 6px 14px}
+.drow{font:inherit;text-align:left;display:flex;flex-direction:column;gap:2px;
+  padding:11px 12px;min-height:52px;border:1.5px solid transparent;border-radius:10px;
+  background:none;color:var(--ink);cursor:pointer}
+.drow b{font-size:15px;font-weight:800}
+.drow span{font-size:11px;font-weight:700;letter-spacing:var(--tr-micro);
+  text-transform:uppercase;color:var(--muted)}
+.drow.here{background:var(--card);border-color:var(--rule)}
+.drow.danger b{color:#B3342A}
+:root[data-theme="dark"] .drow.danger b{color:#D24A3E}
+@media (hover:hover){
+  .drow:hover{background:color-mix(in srgb,var(--accent) 12%,transparent)}
+}
+.dfoot{margin-top:auto;padding:14px 6px 2px;border-top:1.5px solid var(--rule);
+  display:flex;flex-direction:column;gap:8px}
+.dwho{font-size:12px;font-weight:700;color:var(--muted);overflow-wrap:anywhere}
+.dabout{font-size:11.5px;line-height:1.55;color:var(--muted)}
+.dabout a{color:var(--accent);text-decoration:none;font-weight:700}
+.dabout a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 #libbody{flex:1;overflow-y:auto;padding-top:6px;-webkit-overflow-scrolling:touch}
 .menu{display:flex;flex-direction:column;gap:8px;padding:12px 0 16px;
   border-bottom:1px solid var(--rule);margin-bottom:14px}
@@ -311,7 +350,9 @@ header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
   margin:16px 0 8px;padding:0 2px 8px;border-bottom:1px solid var(--rule);color:var(--ink)}
 .library-timeline-heading b{font-size:var(--f0);letter-spacing:var(--tr-micro)}
 .library-timeline-heading span{font-size:11px;font-weight:700;letter-spacing:var(--tr-micro);color:var(--muted);text-align:right}
-.patternpeek{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding-top:8px}
+/* a <button> since 8/20 - the strip IS the way into Patterns */
+.patternpeek{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding-top:8px;
+  width:100%;border:0;background:none;font:inherit;cursor:pointer;margin:4px 0 10px}
 .patternpeek div{padding:10px 8px;border-radius:10px;background:var(--card);text-align:center}
 .patternpeek b{display:block;color:var(--accent);font-size:var(--f3)}
 .patternpeek span{display:block;margin-top:2px;color:var(--muted);font-size:var(--f0);font-weight:700;letter-spacing:var(--tr-label)}
@@ -591,7 +632,7 @@ body{background:var(--paper)}
 .mrow .sub{ letter-spacing:var(--tr-label); font-size:var(--f1) }
 .empty{ letter-spacing:var(--tr-label); font-size:var(--f1) }
 /* the day part in the header is a tap target */
-#dp{ cursor:pointer; color:var(--accent) }   /* blue signals clickable, no underline (ruled 8/20) */
+.dp{ cursor:pointer; color:var(--accent) }   /* blue signals clickable, no underline (ruled 8/20) */
 
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 /* ★ HOVER PARITY PASS (ruled 8/20: "make the ones that are not hoverable,
@@ -629,8 +670,8 @@ body{background:var(--paper)}
 .box{position:relative}
 .box::after{content:"";position:absolute;top:50%;left:50%;
   width:44px;height:44px;transform:translate(-50%,-50%)}
-#dp{position:relative;display:inline-block}
-#dp::after{content:"";position:absolute;top:50%;left:50%;
+.dp{position:relative;display:inline-block}
+.dp::after{content:"";position:absolute;top:50%;left:50%;
   width:100%;min-width:44px;height:44px;transform:translate(-50%,-50%)}
 .varr{position:relative}
 .varr::after{content:"";position:absolute;top:50%;left:50%;
@@ -1344,9 +1385,13 @@ header,#padtop,#libtop{min-height:58px}
 </div>
 
 <section id="lib">
+  <!-- ★ the library wears the SAME top as the questions page (ruled 8/20:
+       "JOT date and night shift to be on all pages"): burger, brand, live
+       clock, theme. The brand is the way back to writing on every page. -->
   <div id="libtop">
-    <button class="iconbtn" id="libclose" aria-label="Close">&#10005;</button>
-    <div id="libtitle">LIBRARY</div>
+    <button class="iconbtn burger" id="libMenu" aria-label="Open menu"><i></i><i></i><i></i></button>
+    <div class="brand" id="libBrand" role="button" tabindex="0" title="Back to writing">JOT</div>
+    <div class="when" id="clock2"></div>
     <button class="iconbtn theme-toggle" id="libThemeToggle" type="button" data-theme-toggle aria-label="Switch to dark mode" aria-pressed="false">
       <svg class="ic theme-moon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.6 14.1A8 8 0 0 1 9.9 3.4 9 9 0 1 0 20.6 14.1Z"/></svg>
       <svg class="ic theme-sun" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"/></svg>
@@ -1354,6 +1399,25 @@ header,#padtop,#libtop{min-height:58px}
   </div>
   <div id="libbody"></div>
 </section>
+
+<!-- ★ the drawer: the burger's one job on every page (his redesign, 8/20).
+     Navigation between AREAS, not a settings dump - each row is a place. -->
+<div id="scrim" hidden></div>
+<nav id="drawer" aria-label="Areas" aria-hidden="true">
+  <div class="dhead"><div class="brand">JOT</div></div>
+  <button class="drow" type="button" data-nav="write"><b>Write</b><span>The questions</span></button>
+  <button class="drow" type="button" data-nav="library"><b>Library</b><span>Every jot, searchable</span></button>
+  <button class="drow" type="button" data-nav="patterns"><b>Patterns</b><span>When and what</span></button>
+  <button class="drow" type="button" data-nav="account"><b>Account</b><span id="dAcctSub">Sync and data</span></button>
+  <button class="drow" type="button" data-nav="demo" id="dDemo"><b>Demo</b><span>John Doe, five years</span></button>
+  <div class="dfoot">
+    <div class="dwho" id="dWho"></div>
+    <!-- ★ the ONE sanctioned appearance of his name in this app (his ask, 8/20).
+         The publish name-gate excludes exactly the data-about-credit line;
+         keep the whole credit on that single line or the gate breaks. -->
+    <div class="dabout" data-about-credit>Jot, developed by <a href="https://mannp09.github.io/mann-landing/" target="_blank" rel="noopener">Mann Patel</a> &middot; <a href="https://www.linkedin.com/in/mann09patel/" target="_blank" rel="noopener">LinkedIn</a><br>Curated to jot life, and to bear the fruits of jots.</div>
+  </div>
+</nav>
 
 <script>
 "use strict";
@@ -1909,18 +1973,24 @@ function dayTint(){
 function clock(){
   dayTint();
   const n = new Date(), part = partOf(n);
-  $("#clock").innerHTML =
+  const html =
     `${longDate(n)}<br>` +
     `<span style="opacity:.78">${clk(n)} ${tzAbbr(n)} &nbsp;|&nbsp; ` +
-    `<span id="dp" role="button" tabindex="0" title="Tap to swap lists">${partName(part)}</span></span>`;
-  const dp = $("#dp");
-  /* tapping the name swaps to the other list and PINS it. the library row is
-     still where rotate lives, so a tap here is never ambiguous. */
-  const swap = e => { e.stopPropagation();
-    localStorage.setItem(NAMING, showingFun() ? "generic" : "fun");
-    clock(); if (lib.classList.contains("on")) renderLib(); };
-  dp.addEventListener("click", swap);
-  dp.addEventListener("keydown", e => { if (e.key==="Enter"||e.key===" ") swap(e); });
+    `<span class="dp" role="button" tabindex="0" title="Tap to swap lists">${partName(part)}</span></span>`;
+  /* ★ ONE painter, EVERY header (ruled 8/20: the same top on all pages).
+     Two elements, one string - they cannot drift. .dp is a class now: the
+     old #dp id would have been a duplicate the moment there were two. */
+  for (const el of [$("#clock"), $("#clock2")]){
+    if (!el) continue;
+    el.innerHTML = html;
+    const dp = el.querySelector(".dp");
+    /* tapping the name swaps to the other list and PINS it. */
+    const swap = e => { e.stopPropagation();
+      localStorage.setItem(NAMING, showingFun() ? "generic" : "fun");
+      clock(); if (lib.classList.contains("on")) renderLib(); };
+    dp.addEventListener("click", swap);
+    dp.addEventListener("keydown", e => { if (e.key==="Enter"||e.key===" ") swap(e); });
+  }
 }
 
 /* jots opened today, per category. THIS is what the box means. */
@@ -2573,11 +2643,65 @@ function words(j){ return j.paragraphs.reduce((a,p) =>
   a + p.text.trim().split(/\s+/).filter(Boolean).length, 0); }
 
 function openLib(){ lib.classList.add("on"); renderLib(); }
-$("#menu").addEventListener("click", openLib);
-$("#libclose").addEventListener("click", () => {
+
+/* ── the drawer: every burger opens THIS, and each row is an area ──────────
+   ★ Ruled 8/20: "clicking hamburger should be more of side panel that can
+   take you to other areas." The library stops being the junk drawer: admin
+   moved to Account, stats to Patterns, and the drawer is only navigation. */
+const drawer = $("#drawer"), scrim = $("#scrim");
+function openDrawer(){
+  const who = $("#dWho"), demoRow = $("#dDemo"), acct = $("#dAcctSub");
+  who.textContent = auth.signedIn ? (auth.email || "Signed in") : "Not signed in";
+  acct.textContent = auth.signedIn ? "Sync and data" : "Sign in · sync and data";
+  demoRow.classList.toggle("danger", demoActive());
+  demoRow.querySelector("b").textContent = demoActive() ? "Exit demo" : "Demo";
+  demoRow.querySelector("span").textContent = demoActive() ? "Return to your local jots" : "John Doe, five years";
+  drawer.querySelectorAll(".drow").forEach(r => r.classList.remove("here"));
+  const here = lib.classList.contains("on") ? null : "write";
+  if (here) drawer.querySelector('[data-nav="' + here + '"]').classList.add("here");
+  scrim.hidden = false;
+  requestAnimationFrame(() => { drawer.classList.add("on"); scrim.classList.add("on"); });
+  drawer.setAttribute("aria-hidden", "false");
+}
+function closeDrawer(){
+  drawer.classList.remove("on"); scrim.classList.remove("on");
+  drawer.setAttribute("aria-hidden", "true");
+  setTimeout(() => { if (!scrim.classList.contains("on")) scrim.hidden = true; }, 240);
+}
+function goWrite(){
   if (demoActive()) exitDemo(false);
   lib.classList.remove("on");
+}
+scrim.addEventListener("click", closeDrawer);
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  if (drawer.classList.contains("on")) closeDrawer();
+  else if (lib.classList.contains("on")) goWrite();
 });
+drawer.addEventListener("click", async e => {
+  const row = e.target.closest(".drow");
+  if (!row) return;
+  const nav = row.dataset.nav;
+  closeDrawer();
+  const gate = document.querySelector(".gate");
+  if (nav === "write"){
+    /* from the gate, Write means "Just Jot" - same door, same stamp */
+    if (gate){ gate.querySelector("#gSkip").click(); return; }
+    goWrite();
+  }
+  if (nav === "library"){ openLib(); }
+  if (nav === "patterns"){ lib.classList.add("on"); renderStats(); }
+  if (nav === "account"){ lib.classList.add("on"); openAccount(); }
+  if (nav === "demo"){
+    if (demoActive()){ exitDemo(true); return; }
+    const r = await startDemo();
+    if (r.error) alert(r.error);
+  }
+});
+$("#menu").addEventListener("click", openDrawer);
+$("#libMenu").addEventListener("click", openDrawer);
+$("#libBrand").addEventListener("click", goWrite);
+$("#libBrand").addEventListener("keydown", e => { if (e.key==="Enter"||e.key===" ") goWrite(); });
 
 /* ---------------------------------------------------------------- the views ---
    ★★★ His spec, 2026-08-14, in one line: "user creates jots - jots can be seen
@@ -2741,6 +2865,14 @@ function createLibrarySection(label, sub, key, defaultOpen=false){
   return { details, panel };
 }
 
+/* the page label lives in the BODY now - the bar is the mirrored header and
+   never changes. Every renderer names its page with this. */
+function libHeading(text){
+  const h = document.createElement("div");
+  h.className = "libpagetitle"; h.textContent = text;
+  libBody.appendChild(h);
+}
+
 function renderLib(){
   const s = load();
   /* ★★ SORT ON THE NEWEST ENTRY, NOT ON WHEN THE JOT WAS OPENED. His report
@@ -2755,15 +2887,18 @@ function renderLib(){
   const nImported = s.jots.reduce((n, j) => n + (isImported(j) ? 1 : 0), 0);
   const all = viewJots(s.jots).slice().sort((a,b) => newestTs(b).localeCompare(newestTs(a)));
   const w = all.reduce((a,j) => a + words(j), 0);
-  $("#libtitle").textContent = demoActive() ? "JOHN DOE · DEMO" : "LIBRARY";
-
   libBody.innerHTML = "";
+  libHeading(demoActive() ? "JOHN DOE · DEMO" : "LIBRARY");
 
-  /* LIBRARY_ACCORDION_START */
+  /* LIBRARY_ACCORDION_START
+     ★ Slimmed in the 8/20 redesign: the library is for READING. Account,
+     Import/Export, the journal archive and the demo entry moved to the drawer
+     and the Account page; day-part naming lives on the clickable day-part in
+     every header. What remains is the corpus and the ways into it. */
   const stack = document.createElement("div"); stack.className = "libstack";
 
-  const profile = createLibrarySection("Profile", demoActive() ? "FICTIONAL · READ ONLY" : "LOCAL ONLY", "profile");
   if (demoActive()){
+    const profile = createLibrarySection("Profile", "FICTIONAL · READ ONLY", "profile");
     const card = document.createElement("div"); card.className = "demo-profile";
     card.innerHTML = '<b>John Doe</b><span>Born Jan 1, 2001 · Grew up in New Jersey</span><span>5 years · Aug 5, 2021 to Aug 4, 2026</span>';
     const note = document.createElement("div"); note.className = "demo-note";
@@ -2772,68 +2907,8 @@ function renderLib(){
     exit.innerHTML = '<span>Exit demo</span><span class="sub">RETURN TO YOUR LOCAL JOTS</span>';
     exit.onclick = () => exitDemo(true);
     profile.panel.append(card, note, exit);
-  } else {
-    const profileOpen = document.createElement("button"); profileOpen.className = "mrow";
-    profileOpen.innerHTML = '<span>Open profile</span><span class="sub">NAME AND LOCAL DEVICE</span>';
-    profileOpen.onclick = openAccount;
-    const demoOpen = document.createElement("button"); demoOpen.className = "mrow";
-    demoOpen.innerHTML = '<span>View John Doe demo</span><span class="sub">5 FICTIONAL YEARS</span>';
-    demoOpen.onclick = async () => {
-      demoOpen.disabled = true;
-      const result = await startDemo();
-      demoOpen.disabled = false;
-      if (result.error) alert(result.error);
-    };
-    /* ★ path back to the start screen (ruled 8/20: "add a path to get to that
-       screen from the library"). Clearing the seen-flag and reloading is the
-       honest route: the gate rebuilds exactly as a first visit, and whatever
-       he picks re-stamps the flag. No closure surgery, no duplicate gate. */
-    const startScreen = document.createElement("button"); startScreen.className = "mrow go";   /* green: it starts something (ruled 8/20) */
-    startScreen.innerHTML = '<span>Start screen</span><span class="sub">SIGN IN · SIGN UP · DEMO</span>';
-    startScreen.onclick = () => { localStorage.removeItem(GATEKEY); location.reload(); };
-    profile.panel.append(profileOpen, demoOpen, startScreen);
+    stack.appendChild(profile.details);
   }
-  stack.appendChild(profile.details);
-
-  const transfer = createLibrarySection("Import / Export", `${all.length} ${all.length === 1 ? "JOT" : "JOTS"}`, "transfer");
-  const importButton = document.createElement("button"); importButton.className = "mrow";
-  importButton.innerHTML = '<span>Import</span><span class="sub">MERGE A FILE IN</span>';
-  const fileInput = document.createElement("input"); fileInput.type = "file"; fileInput.accept = "application/json,.json"; fileInput.hidden = true;
-  importButton.onclick = () => fileInput.click();
-  fileInput.onchange = event => {
-    const file = event.target.files && event.target.files[0];
-    if (file) doImport(file);
-    event.target.value = "";
-  };
-  const exportButton = document.createElement("button"); exportButton.className = "mrow";
-  exportButton.innerHTML = `<span>Export</span><span class="sub">${w} ${w === 1 ? "WORD" : "WORDS"}</span>`;
-  exportButton.onclick = doExport;
-  if (demoActive()){
-    importButton.disabled = true; exportButton.disabled = true;
-    importButton.querySelector(".sub").textContent = "OFF IN DEMO";
-    exportButton.querySelector(".sub").textContent = "OFF IN DEMO";
-  }
-  transfer.panel.append(importButton, exportButton, fileInput); stack.appendChild(transfer.details);
-
-  const archive = createLibrarySection("Journal archive", nImported ? `${nImported} IMPORTED` : "NONE IMPORTED", "archive");
-  const archiveButton = document.createElement("button"); archiveButton.className = "mrow";
-  archiveButton.innerHTML = '<span>Imported journals</span><span class="sub">' +
-    (nImported ? (showImported() ? "SHOWING" : "HIDDEN") : "NONE IMPORTED") + '</span>';
-  if (demoActive() || !nImported){ archiveButton.disabled = true; archiveButton.style.opacity = ".45"; }
-  else archiveButton.onclick = () => {
-    localStorage.setItem(SHOW_IMPORTED, showImported() ? "0" : "1"); renderLib();
-  };
-  archive.panel.appendChild(archiveButton); stack.appendChild(archive.details);
-
-  const options = createLibrarySection("Options", mode().toUpperCase(), "options");
-  const namingButton = document.createElement("button"); namingButton.className = "mrow";
-  namingButton.innerHTML = '<span>Day part names</span><span class="sub">' + mode().toUpperCase() +
-    (mode() === "rotate" ? " · " + (showingFun() ? "FUN" : "GENERIC") : "") + '</span>';
-  namingButton.onclick = () => {
-    const next = { rotate:"generic", generic:"fun", fun:"rotate" }[mode()];
-    localStorage.setItem(NAMING, next); clock(); renderLib();
-  };
-  options.panel.appendChild(namingButton); stack.appendChild(options.details);
 
   const search = createLibrarySection("Search", libView.q ? "FILTERING" : "EVERY JOT", "search");
   const sb = document.createElement("input");
@@ -2849,18 +2924,17 @@ function renderLib(){
   };
   search.panel.appendChild(sb); stack.appendChild(search.details);
 
-  const patterns = createLibrarySection("Patterns", "WHEN AND WHAT", "patterns", true);
+  libBody.appendChild(stack);
+
+  /* the three-number pulse stays glanceable; the full read is one tap away */
   const daysWritten = new Set(all.map(jot => vector(jot).date)).size;
-  const peek = document.createElement("div"); peek.className = "patternpeek";
+  const peek = document.createElement("button");
+  peek.type = "button"; peek.className = "patternpeek"; peek.title = "Open patterns";
   for (const [value, label] of [[all.length,"JOTS"],[w,"WORDS"],[daysWritten,"DAYS"]]){
     const cell = document.createElement("div"); cell.innerHTML = `<b>${value}</b><span>${label}</span>`; peek.appendChild(cell);
   }
-  const openPatterns = document.createElement("button"); openPatterns.className = "mrow";
-  openPatterns.innerHTML = '<span>Open full patterns</span><span class="sub">DISTRIBUTIONS</span>';
-  openPatterns.onclick = renderStats;
-  patterns.panel.append(peek, openPatterns); stack.appendChild(patterns.details);
-
-  libBody.appendChild(stack);
+  peek.onclick = renderStats;
+  libBody.appendChild(peek);
   /* LIBRARY_ACCORDION_END */
 
   const timelineHeading = libraryTimelineHeading(demoActive(), all.length);
@@ -3320,7 +3394,7 @@ function suggest(j){
 function renderStats(){
   const all = viewJots(load().jots);
   libBody.innerHTML = "";
-  $("#libtitle").textContent = demoActive() ? "JOHN DOE · PATTERNS" : "PATTERNS";
+  libHeading(demoActive() ? "JOHN DOE · PATTERNS" : "PATTERNS");
 
   const back = document.createElement("button");
   back.className = "mrow"; back.style.marginBottom = "10px";
@@ -3417,8 +3491,8 @@ function renderStats(){
 
 function renderJot(j){
   const v = vector(j);
-  $("#libtitle").textContent = (demoActive() ? "DEMO · " : "") + j.prompt_text.toUpperCase();
   libBody.innerHTML = "";
+  libHeading((demoActive() ? "DEMO · " : "") + j.prompt_text.toUpperCase());
 
   const back = document.createElement("button");
   back.className = "mrow"; back.style.marginBottom = "6px";
@@ -4194,7 +4268,7 @@ async function entryGate(){
       }
     });
     var gb = g.querySelector("#gBurger");
-    if (gb) gb.onclick = function(){ if (typeof openLib === "function") openLib(); };
+    if (gb) gb.onclick = function(){ if (typeof openDrawer === "function") openDrawer(); };
     var gt = g.querySelector("#gTheme"), real = document.getElementById("themeToggle");
     if (gt && real){
       gt.innerHTML = real.innerHTML;
@@ -4289,6 +4363,46 @@ function openAccount(){
   back.onclick = renderLib;
   libBody.appendChild(back);
   libBody.appendChild(wrap);
+
+  /* ── DATA - moved here from the library in the 8/20 redesign. Import,
+     Export and the journal archive are account-of-record work, not reading. */
+  const s = load();
+  const wAll = viewJots(s.jots).reduce((a, j) => a + words(j), 0);
+  const nImp = s.jots.reduce((n, j) => n + (isImported(j) ? 1 : 0), 0);
+  const data = document.createElement("div"); data.className = "acct";
+  data.innerHTML = '<div class="lab" style="margin-top:14px">DATA</div>';
+  const importButton = document.createElement("button"); importButton.className = "mrow";
+  importButton.innerHTML = '<span>Import</span><span class="sub">MERGE A FILE IN</span>';
+  const fileInput = document.createElement("input"); fileInput.type = "file";
+  fileInput.accept = "application/json,.json"; fileInput.hidden = true;
+  importButton.onclick = () => fileInput.click();
+  fileInput.onchange = event => {
+    const file = event.target.files && event.target.files[0];
+    if (file) doImport(file);
+    event.target.value = "";
+  };
+  const exportButton = document.createElement("button"); exportButton.className = "mrow";
+  exportButton.innerHTML = `<span>Export</span><span class="sub">${wAll} ${wAll === 1 ? "WORD" : "WORDS"}</span>`;
+  exportButton.onclick = doExport;
+  const archiveButton = document.createElement("button"); archiveButton.className = "mrow";
+  archiveButton.innerHTML = '<span>Imported journals</span><span class="sub">' +
+    (nImp ? (showImported() ? "SHOWING" : "HIDDEN") : "NONE IMPORTED") + '</span>';
+  if (!nImp){ archiveButton.disabled = true; archiveButton.style.opacity = ".45"; }
+  else archiveButton.onclick = () => {
+    localStorage.setItem(SHOW_IMPORTED, showImported() ? "0" : "1"); openAccount();
+  };
+  /* ★ path back to the start screen (ruled 8/20). Clearing the seen-flag and
+     reloading rebuilds the gate exactly as a first visit. */
+  const startScreen = document.createElement("button"); startScreen.className = "mrow go";
+  startScreen.innerHTML = '<span>Start screen</span><span class="sub">SIGN IN · SIGN UP · DEMO</span>';
+  startScreen.onclick = () => { localStorage.removeItem(GATEKEY); location.reload(); };
+  data.append(importButton, exportButton, fileInput, archiveButton, startScreen);
+  if (demoActive()){
+    [importButton, exportButton, archiveButton].forEach(b => { b.disabled = true; });
+    importButton.querySelector(".sub").textContent = "OFF IN DEMO";
+    exportButton.querySelector(".sub").textContent = "OFF IN DEMO";
+  }
+  libBody.appendChild(data);
   /* textContent, not innerHTML - an email is user input and must never be
      interpolated into markup. */
   if (signed) wrap.querySelector(".who").textContent = auth.email || "";
