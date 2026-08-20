@@ -421,9 +421,20 @@ header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
    minimum while eight of them plus the header and tally still clear a 667px
    viewport, which is the smallest phone worth supporting. */
 .task{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;
-  min-height:56px;padding:4px;border-bottom:1px solid var(--rule)}
+  min-height:56px;padding:4px;border-bottom:1px solid var(--rule);
+  /* ★ 8/20: rows STRETCH to fill the screen between header and footer -
+     the deck owns the whole space, not a strip at the top of it */
+  flex:1 0 auto}
 @media (max-height:700px){ .task{min-height:50px} }
 .decktools{display:flex;align-items:center;justify-content:flex-end;gap:7px;min-height:36px}
+/* the deck footer: tally left, tools right, pinned to the bottom.
+   ⚠ the pencil FAB is FIXED bottom-right (62px + its offset), so the footer
+   carries enough bottom margin to sit fully ABOVE it - "overlap" (his catch,
+   8/20) was Edit questions disappearing under the pencil. */
+.deckfoot{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  margin-top:auto;min-height:44px;flex:0 0 auto;
+  margin-bottom:calc(70px + max(env(safe-area-inset-bottom), 20px))}
+.deckfoot .tally{margin-top:0}
 .deckbtn,.qctl button,.promptform button{
   min-height:34px;padding:0 11px;border:1px solid var(--rule);border-radius:10px;
   background:var(--card);color:var(--accent);font:800 var(--f0)/1 'Manrope',sans-serif;
@@ -2090,8 +2101,9 @@ function renderPromptForm(){
 function renderHome(){
   pad.classList.remove("on"); home.style.display="flex"; live=null;
   home.innerHTML = "";
-
-  home.appendChild(renderPromptTools());
+  /* ★ 8/20 layout ruling: the questions start right under the header and
+     STRETCH to fill the screen; Edit questions moved down beside the tally.
+     The deck is the page - the tools are the footer. */
 
   const visibleItems = activePromptItems();
   for (const item of visibleItems){
@@ -2242,7 +2254,10 @@ function renderHome(){
     ? today.length + (today.length === 1 ? " jot" : " jots") + " \u00b7 " +
       today.reduce((a,j) => a + words(j), 0) + " words"
     : "Nothing yet today. Tap a box, or just start typing.";
-  home.appendChild(tot);
+  const foot = document.createElement("div");
+  foot.className = "deckfoot";
+  foot.append(tot, renderPromptTools());
+  home.appendChild(foot);
 
   /* the pencil - opens the free-writing prompt directly */
   if (!promptEditMode){
