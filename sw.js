@@ -12,7 +12,7 @@
 /* ⚠ v2: the manifest was missing from v1's shell list because the manifest
    itself was missing. An installed app that cannot fetch its own manifest
    offline is the same half-feature one layer down. */
-const CACHE = "jot-shell-v57";
+const CACHE = "jot-shell-v58";
 const SHELL = ["./", "./index.html", "./manifest.json"];
 
 self.addEventListener("install", e => {
@@ -33,6 +33,9 @@ self.addEventListener("activate", e => {
 self.addEventListener("fetch", e => {
   const r = e.request;
   if (r.method !== "GET") return;
+  /* ⚠ sync and auth are ALWAYS live, never cached. A cached pull response is
+     a stale corpus that survives a reload; a cached auth response is worse. */
+  if (new URL(r.url).hostname.endsWith(".supabase.co")) return;
 
   e.respondWith(
     caches.match(r).then(hit => {

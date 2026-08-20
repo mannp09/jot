@@ -1559,6 +1559,10 @@ const save = s => {
        AFTER the write succeeds, never before - a failed write must not
        invalidate a cache that still matches what is on disk. */
     STORE_GEN++;
+    /* sync is a LISTENER on the single writer, never a second writer: a
+       successful save only schedules a background flush. Nothing here blocks
+       or throws - capture must not know the network exists. */
+    if (typeof syncSchedule === "function") syncSchedule();
     return true;
   } catch (e){
     /* ⚠⚠ S6 — QUOTA. Identity confirmed in-browser: QuotaExceededError,
@@ -3452,6 +3456,11 @@ function renderJot(j){
 ${j.paragraphs.length} timestamped ${j.paragraphs.length===1?"entry":"entries"}. This cannot be undone.`)) return;
     const st = load();
     st.jots = st.jots.filter(x => x.jot_id !== j.jot_id);
+    /* ⚠ a hard delete cannot sync - the other device cannot tell "deleted"
+       from "not yet seen" and would resurrect it. The tombstone carries the
+       FACT of the deletion the same way a jot carries the fact of a thought.
+       Recorded even signed out, so a later sign-in still carries it. */
+    if (typeof syncTombstone === "function") syncTombstone(j.jot_id);
     save(st); renderLib();
   };
 
@@ -3667,6 +3676,7 @@ async function doSignUp(email, pw){
      hour of confusion later. */
   if (res.data && res.data.access_token){
     auth.session = res.data;
+    if (typeof syncSchedule === "function") syncSchedule(1200);
     return { ok: "Account created. You are signed in." };
   }
   return { ok: "Account created. Check " + email + " for the confirmation link, then sign in." };
@@ -3676,6 +3686,7 @@ async function doSignIn(email, pw){
   const res = await sbAuth("token?grant_type=password", { email: email, password: pw });
   if (res.error) return { error: res.error };
   auth.session = res.data;
+  if (typeof syncSchedule === "function") syncSchedule(1200);
   return { ok: "Signed in as " + (res.data.user ? res.data.user.email : email) + "." };
 }
 
@@ -3737,6 +3748,306 @@ async function sbEnsureFresh(){
 
 /* every 20 minutes, well inside a 60-minute token */
 setInterval(function(){ sbEnsureFresh(); }, 20 * 60 * 1000);
+
+/* ==========================================================================
+   SYNC - the mirror. localStorage stays the source of truth ON THIS DEVICE;
+   Supabase is a mirror the device pushes to and pulls from. The 8/17 plan,
+   followed to the letter. Four properties, each load-bearing:
+
+   1. OFFLINE IS THE APP. Nothing here ever blocks capture. Every entry point
+      is a debounced background flush that gives up silently with no network.
+   2. ONLY CLOSED JOTS SYNC. The open pad never leaves the device - which
+      makes the only genuine conflict jot could have (two devices editing one
+      open pad) impossible rather than merely handled.
+   3. THE PULL PATH WRITES THROUGH save(), NEVER localStorage.setItem. save()
+      is the single writer; the store cache hangs off its generation counter,
+      and a second raw writer would mean stale reads with nothing thrown.
+   4. A DELETE IS A ROW, NOT AN ABSENCE. `deleted_at` tombstones carry the
+      fact of a deletion; a hard delete would be resurrected by every union.
+
+   ! Conflict rule: last-write-wins per jot_id on SERVER `updated_at` (a
+   trigger stamps it, so a wrong device clock cannot win an argument). A jot
+   edited locally since its last push wins over anything pulled - the push
+   that follows makes the server agree.
+   ! Demo is triple-fenced: source==="demo" never syncs, DEMO_STORE never
+   enters jot.v1, and a flush while the demo is open simply waits.
+   ========================================================================== */
+const SYNCKEY  = "jot.sync";         /* account binding, pull cursor, tombstones */
+const SYNCHASH = "jot.sync.hashes";  /* jot_id -> content hash at last push      */
+
+const syncMeta = {
+  get(){ try { return JSON.parse(localStorage.getItem(SYNCKEY) || "{}"); } catch { return {}; } },
+  set(m){ try { localStorage.setItem(SYNCKEY, JSON.stringify(m)); } catch {} }
+};
+const syncHashes = {
+  get(){ try { return JSON.parse(localStorage.getItem(SYNCHASH) || "{}"); } catch { return {}; } },
+  set(h){ try { localStorage.setItem(SYNCHASH, JSON.stringify(h)); } catch {} }
+};
+
+/* stable stringify: a pulled copy and a typed copy of one jot build their
+   keys in different orders, and an order-sensitive hash would re-push every
+   pulled jot once for nothing. */
+function stableJson(v){
+  if (v === null || typeof v !== "object") return JSON.stringify(v);
+  if (Array.isArray(v)) return "[" + v.map(stableJson).join(",") + "]";
+  return "{" + Object.keys(v).sort().map(k => JSON.stringify(k) + ":" + stableJson(v[k])).join(",") + "}";
+}
+function jotHash(j){
+  const s = stableJson(j);
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  return h.toString(36) + ":" + s.length;
+}
+/* the record minus live UI state - same underscore rule the export uses */
+function syncClean(j){
+  const o = {};
+  for (const k in j) if (k[0] !== "_") o[k] = j[k];
+  return o;
+}
+const syncable = j => !j._open && !!j.closed_at && j.source !== "demo";
+const wordsOf = t => (String(t).trim().match(/\S+/g) || []).length;
+
+/* the same address vector() computes, under the column names the database
+   stores. Conventions ported from 6-Scripts/jot_schema.py buckets() - never
+   invented here. */
+function syncJotRow(j){
+  const v = vector(j), paras = j.paragraphs || [];
+  let dur = null;
+  if (j.opened_at && j.closed_at){
+    const d = Math.round((new Date(j.closed_at) - new Date(j.opened_at)) / 1000);
+    if (isFinite(d) && d >= 0) dur = d;
+  }
+  const row = {
+    jot_id: j.jot_id, category: j.category,
+    prompt_text: j.prompt_text || "", opened_at: j.opened_at,
+    closed_at: j.closed_at || null, source: j.source || "jot",
+    d_date: v.date, d_dow: v.dow, d_week: v.week, d_month: v.month,
+    d_quarter: v.quarter, d_year: v.year, d_decade: v.decade,
+    d_hour: v.hour, d_daypart: v.daypart,
+    n_paragraphs: paras.length,
+    n_chars: paras.reduce((n, p) => n + (p.text || "").length, 0),
+    n_words: paras.reduce((n, p) => n + wordsOf(p.text || ""), 0),
+    duration_s: dur,
+    /* explicit null ON PURPOSE: an edit pushed after a delete elsewhere
+       clears the tombstone - the edit is the newer intent and wins */
+    deleted_at: null
+  };
+  for (const k of ["split_from","topic","kind","day_label","form",
+                   "weekday_written","date_original","src_doc","locked"])
+    if (j[k] !== undefined && j[k] !== null) row[k] = j[k];
+  return row;
+}
+function syncParaRows(j){
+  const out = []; let prev = null;
+  (j.paragraphs || []).forEach(function(p, i){
+    let gap = null;
+    if (prev){ const g = Math.round((new Date(p.ts) - new Date(prev)) / 1000); if (isFinite(g)) gap = g; }
+    out.push({ jot_id: j.jot_id, seq: i + 1, ts: p.ts, text: p.text || "",
+               gap_s: gap, n_chars: (p.text || "").length,
+               n_words: wordsOf(p.text || ""), source: p.source || null });
+    prev = p.ts;
+  });
+  return out;
+}
+
+async function sbRest(method, pathq, body, prefer){
+  if (!(await sbEnsureFresh())) return { error: "signed out" };
+  let r;
+  try {
+    const h = { "apikey": SB_KEY,
+                "Authorization": "Bearer " + auth.session.access_token,
+                "Content-Type": "application/json" };
+    if (prefer) h["Prefer"] = prefer;
+    r = await fetch(SB_URL + "/rest/v1/" + pathq, {
+      method: method, headers: h,
+      body: body === undefined ? undefined : JSON.stringify(body)
+    });
+  } catch (e){ return { error: "offline" }; }
+  if (r.status === 204) return { data: null };
+  let d = null;
+  try { d = await r.json(); } catch {}
+  if (!r.ok) return { error: (d && (d.message || d.msg || d.hint)) || ("HTTP " + r.status) };
+  return { data: d };
+}
+
+let SYNC_STATE = { running: false, line: "Never synced from this device.", last: null };
+function syncStatusLine(){ return SYNC_STATE.line; }
+const sEnc = encodeURIComponent;
+const inList = ids => 'in.(' + ids.map(x => '"' + String(x).replace(/"/g, "") + '"').join(",") + ')';
+
+async function syncFlush(){
+  if (SYNC_STATE.running || !auth.signedIn || demoActive() || STORE_LOCKED) return { ok: "waiting" };
+  SYNC_STATE.running = true;
+  const fail = m => { SYNC_STATE.line = m; return { error: m }; };
+  try {
+    if (!(await sbEnsureFresh())) return fail("Session expired. Sign in again.");
+    const me = auth.session.user && auth.session.user.id;
+    const meta = syncMeta.get();
+    /* !! ACCOUNT BINDING. If this device's corpus has synced under one
+       account, a different sign-in must NOT push his jots into it. */
+    if (me && meta.user_id && meta.user_id !== me)
+      return fail("This device's jots belong to another account. Sync is paused.");
+
+    /* ---- PULL ---- */
+    let since = meta.last_pull || "1970-01-01T00:00:00+00:00";
+    let pulled = [], page;
+    do {
+      const r = await sbRest("GET", "jot?select=*&updated_at=gt." + sEnc(since) +
+                                    "&order=updated_at.asc&limit=1000");
+      if (r.error) return fail("Pull failed: " + r.error);
+      page = r.data || [];
+      pulled = pulled.concat(page);
+      if (page.length) since = page[page.length - 1].updated_at;
+    } while (page.length === 1000);
+
+    const hashes = syncHashes.get();
+    const st = load();
+    const localBy = {};
+    st.jots.forEach(j => { localBy[j.jot_id] = j; });
+    const dirty = {};                 /* local edits not yet pushed: local wins on pull */
+    st.jots.forEach(function(j){
+      if (syncable(j) && hashes[j.jot_id] !== jotHash(syncClean(j))) dirty[j.jot_id] = true;
+    });
+
+    let touched = 0;
+    const want = pulled.filter(row => !row.deleted_at && !dirty[row.jot_id]);
+    const paraBy = {};
+    for (let i = 0; i < want.length; i += 60){
+      const ids = want.slice(i, i + 60).map(r => r.jot_id);
+      const r = await sbRest("GET", "paragraph?select=jot_id,seq,ts,text,source&jot_id=" +
+                                    sEnc(inList(ids)) + "&order=jot_id.asc,seq.asc");
+      if (r.error) return fail("Pull failed: " + r.error);
+      (r.data || []).forEach(p => { (paraBy[p.jot_id] = paraBy[p.jot_id] || []).push(p); });
+    }
+    pulled.forEach(function(row){
+      if (dirty[row.jot_id]) return;
+      if (row.deleted_at){
+        if (localBy[row.jot_id]){
+          st.jots = st.jots.filter(x => x.jot_id !== row.jot_id);
+          delete localBy[row.jot_id]; touched++;
+        }
+        delete hashes[row.jot_id];
+        return;
+      }
+      const paras = (paraBy[row.jot_id] || []).sort((a, b) => a.seq - b.seq)
+        .map(function(p){ const o = { ts: p.ts, text: p.text }; if (p.source) o.source = p.source; return o; });
+      if (!paras.length) return;      /* a jot with no text is not a record */
+      const j = { jot_id: row.jot_id, category: row.category,
+                  prompt_text: row.prompt_text, opened_at: row.opened_at,
+                  closed_at: row.closed_at, paragraphs: paras };
+      if (row.source && row.source !== "jot") j.source = row.source;
+      ["split_from","topic","kind","day_label","form","weekday_written",
+       "date_original","src_doc"].forEach(function(k){
+        if (row[k] !== undefined && row[k] !== null) j[k] = row[k];
+      });
+      if (row.locked) j.locked = true;
+      const h = jotHash(syncClean(j)), cur = localBy[row.jot_id];
+      if (cur && jotHash(syncClean(cur)) === h){ hashes[row.jot_id] = h; return; }
+      if (cur) st.jots[st.jots.indexOf(cur)] = j;
+      else st.jots.push(j);
+      localBy[row.jot_id] = j; hashes[row.jot_id] = h; touched++;
+    });
+    if (touched && !save(st))
+      return fail("Pull could not be saved - the store refused the write.");
+
+    /* ---- PUSH - only closed jots, dup ids collapsed to the LAST occurrence
+       (his real store carries duplicate rows; a batch with a repeated key
+       makes Postgres refuse the whole upsert) ---- */
+    const changed = [], seen = {};
+    st.jots.forEach(function(j){
+      if (!syncable(j)) return;
+      if (hashes[j.jot_id] === jotHash(syncClean(j))) return;
+      if (seen[j.jot_id] !== undefined) changed[seen[j.jot_id]] = j;
+      else { seen[j.jot_id] = changed.length; changed.push(j); }
+    });
+    for (let i = 0; i < changed.length; i += 100){
+      const batch = changed.slice(i, i + 100);
+      const up = await sbRest("POST", "jot", batch.map(syncJotRow),
+                              "resolution=merge-duplicates,return=minimal");
+      if (up.error) return fail("Push failed: " + up.error);
+      /* paragraphs are REPLACED per jot: an edit can shorten a jot, and an
+         upsert cannot express "row three no longer exists" */
+      const ids = batch.map(j => j.jot_id);
+      const del = await sbRest("DELETE", "paragraph?jot_id=" + sEnc(inList(ids)));
+      if (del.error) return fail("Push failed: " + del.error);
+      const paras = [];
+      batch.forEach(j => paras.push.apply(paras, syncParaRows(j)));
+      if (paras.length){
+        const ins = await sbRest("POST", "paragraph", paras, "return=minimal");
+        if (ins.error) return fail("Push failed: " + ins.error);
+      }
+      batch.forEach(j => { hashes[j.jot_id] = jotHash(syncClean(j)); });
+    }
+
+    /* ---- TOMBSTONES ---- */
+    const tomb = meta.tomb || [], nTomb = tomb.length;
+    if (nTomb){
+      const r = await sbRest("PATCH", "jot?jot_id=" + sEnc(inList(tomb.map(t => t.jot_id))),
+                             { deleted_at: new Date().toISOString() }, "return=minimal");
+      /* a locked row refuses its tombstone BY DESIGN (the read-only journals);
+         that refusal must not wedge the queue forever */
+      if (r.error && !/locked/i.test(r.error)) return fail("Delete sync failed: " + r.error);
+      tomb.forEach(t => delete hashes[t.jot_id]);
+      meta.tomb = [];
+    }
+
+    meta.user_id = me || meta.user_id;
+    meta.last_pull = since;
+    meta.last_ok = iso(new Date());
+    syncMeta.set(meta); syncHashes.set(hashes);
+    SYNC_STATE.last = meta.last_ok;
+    SYNC_STATE.line = "Synced " + new Date().toLocaleTimeString() + " - " +
+                      changed.length + " pushed, " + pulled.length + " pulled" +
+                      (nTomb ? ", " + nTomb + " delete" + (nTomb === 1 ? "" : "s") + " carried" : "") + ".";
+    return { ok: SYNC_STATE.line };
+  } finally {
+    SYNC_STATE.running = false;
+  }
+}
+
+let _syncTimer = null;
+function syncSchedule(ms){
+  if (!auth.signedIn) return;
+  clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(function(){ syncFlush(); }, ms === undefined ? 4000 : ms);
+}
+function syncTombstone(id){
+  const meta = syncMeta.get();
+  (meta.tomb = meta.tomb || []).push({ jot_id: id, deleted_at: iso(new Date()) });
+  syncMeta.set(meta);
+  const h = syncHashes.get(); delete h[id]; syncHashes.set(h);
+  syncSchedule(1000);
+}
+window.addEventListener("online", function(){ syncSchedule(2000); });
+setInterval(function(){ syncSchedule(1); }, 10 * 60 * 1000);
+
+/* ── CONFIRMATION AND RECOVERY LINKS ────────────────────────────────────────
+   Supabase email links land back on the app with the session in the URL hash.
+   Trade it for a stored session, scrub the URL, and for a recovery link ask
+   for the new password right here - without this, "forgot password" dead-ends
+   on a signed-in page with no way to actually set one. */
+(function sbHashSession(){
+  if (!location.hash || location.hash.indexOf("access_token=") < 0) return;
+  const p = new URLSearchParams(location.hash.slice(1));
+  const at = p.get("access_token");
+  if (!at) return;
+  auth.session = {
+    access_token: at, refresh_token: p.get("refresh_token"),
+    expires_at: Math.floor(Date.now() / 1000) + parseInt(p.get("expires_in") || "3600", 10),
+    user: null
+  };
+  const kind = p.get("type") || "";
+  history.replaceState(null, "", location.pathname + location.search);
+  if (kind === "recovery"){
+    const np = window.prompt("New password (6+ characters):");
+    if (np && np.length >= 6)
+      fetch(SB_URL + "/auth/v1/user", { method: "PUT",
+        headers: { "apikey": SB_KEY, "Content-Type": "application/json",
+                   "Authorization": "Bearer " + at },
+        body: JSON.stringify({ password: np }) }).catch(function(){});
+  }
+  sbRefresh();   /* fills in the user object; failure keeps the hash session */
+})();
 
 /* ── THE ENTRY PROMPT ───────────────────────────────────────────────────────
    His ask: "jot should prompt log in or sign up upon entry".
@@ -3819,7 +4130,7 @@ async function entryGate(){
       '<div class="gchoices" id="gChoices">' +
         '<button class="abtn gchoice" id="gSkip"><b>Just Jot</b><span>Keep everything on this device.</span></button>' +
         '<button class="abtn pri gchoice" id="gInChoice"><b>Login</b><span>Use an existing Jot account.</span></button>' +
-        '<button class="abtn gchoice" id="gUpChoice"><b>Sign up</b><span>Create an account for future sync.</span></button>' +
+        '<button class="abtn gchoice" id="gUpChoice"><b>Sign up</b><span>Create an account to sync devices.</span></button>' +
         '<button class="abtn gchoice" id="gDemo"><b>Demo</b><span>Explore John Doe, age 25.</span></button>' +
       '</div>' +
       '<div class="gauth" id="gAuth" hidden>' +
@@ -3921,7 +4232,8 @@ function openAccount(){
     '<div class="lab">ACCOUNT</div>' +
     (signed
       ? '<div class="who"></div>' +
-        '<div class="note">Signed in. Sync is not wired yet, so nothing has left this device.</div>' +
+        '<div class="note" id="aSyncNote"></div>' +
+        '<button class="abtn pri" id="aSync">Sync now</button>' +
         '<button class="abtn" id="aOut">Sign out</button>'
       : '<div class="note">jot works with no account. Signing in is only for syncing between your phone and laptop later.</div>' +
         '<input class="ain" id="aEmail" type="email" placeholder="email" autocomplete="username">' +
@@ -3956,6 +4268,13 @@ function openAccount(){
   };
 
   if (signed){
+    const noteEl = wrap.querySelector("#aSyncNote");
+    const paint = function(){ noteEl.textContent = syncStatusLine(); };
+    paint();
+    wrap.querySelector("#aSync").onclick = async function(){
+      busy(true); say({ ok: "Syncing..." });
+      const r = await syncFlush(); busy(false); say(r); paint();
+    };
     wrap.querySelector("#aOut").onclick = function(){ say(doSignOut()); openAccount(); };
     return;
   }
@@ -4018,6 +4337,7 @@ window.JotTheme.bind();
 entryGate();
 clock(); setInterval(clock, 15000);   /* < ROTATE_MS so a flip is never missed */
 renderHome();
+if (auth.signedIn) syncSchedule(2500);   /* signed in at open -> quiet catch-up */
 </script>
 </body>
 </html>
