@@ -12,7 +12,7 @@
 /* ⚠ v2: the manifest was missing from v1's shell list because the manifest
    itself was missing. An installed app that cannot fetch its own manifest
    offline is the same half-feature one layer down. */
-const CACHE = "jot-shell-v55";
+const CACHE = "jot-shell-v56";
 const SHELL = ["./", "./index.html", "./manifest.json"];
 
 self.addEventListener("install", e => {

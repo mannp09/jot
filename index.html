@@ -271,7 +271,7 @@ header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
 #lib{position:fixed;inset:0;background:var(--paper);z-index:20;
   display:none;flex-direction:column;
   padding:max(env(safe-area-inset-top),14px) var(--pad) max(env(safe-area-inset-bottom),18px)}
-#lib.on{display:flex}
+#lib.on{display:flex;z-index:120}   /* above the gate overlay (z 99) so the burger works from the start screen too */
 #libtop{display:flex;align-items:center;gap:12px;padding-bottom:12px;
   border-bottom:1px solid var(--rule)}
 #libtitle{flex:1;font-size:var(--f1);font-weight:700;letter-spacing:var(--tr-micro);color:var(--muted)}
@@ -1058,7 +1058,7 @@ body::before{
 .gate{position:fixed;inset:0;z-index:99;background:var(--paper);   /* same paper as the questions page (ruled 8/20) */
       display:flex;align-items:center;justify-content:center;padding:22px}
 .gcard{width:100%;max-width:330px;display:flex;flex-direction:column;gap:9px}
-.ghead{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.ghead{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .gside{display:flex;align-items:flex-start;gap:10px}
 .gclock{text-align:right;font-size:11px;font-weight:700;letter-spacing:.06em;
   text-transform:uppercase;color:var(--muted);line-height:1.55}
@@ -3811,7 +3811,8 @@ async function entryGate(){
   g.className = "gate";
   g.innerHTML =
     '<div class="gcard">' +
-      '<div class="ghead"><div class="glogo brand">JOT</div>' +
+      '<div class="ghead"><button class="iconbtn burger" id="gBurger" type="button" aria-label="Open library"><i></i><i></i><i></i></button>' +
+      '<div class="glogo brand">JOT</div>' +
       '<div class="gside"><div class="gclock" id="gClock"></div>' +
       '<button class="iconbtn theme-toggle" id="gTheme" type="button" aria-label="Switch theme"></button></div></div>' +
       '<div class="gsub">Moments are meant to be jotted</div>' +
@@ -3850,6 +3851,8 @@ async function entryGate(){
         paintGClock(); if (typeof clock === "function") clock();
       }
     });
+    var gb = g.querySelector("#gBurger");
+    if (gb) gb.onclick = function(){ if (typeof openLib === "function") openLib(); };
     var gt = g.querySelector("#gTheme"), real = document.getElementById("themeToggle");
     if (gt && real){
       gt.innerHTML = real.innerHTML;
