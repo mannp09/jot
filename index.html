@@ -4204,6 +4204,14 @@ async function entryGate(){
   };
   g.querySelector("#gUpChoice").onclick = () => showAuth("signup");
   g.querySelector("#gInChoice").onclick = () => showAuth("login");
+  /* Enter in either field IS the button (his read of the form, 8/20: "when i
+     press enter here - it means im hitting login"). A div is not a <form>, so
+     without this the keypress silently did nothing. */
+  ["#gEmail", "#gPw"].forEach(function(sel){
+    g.querySelector(sel).addEventListener("keydown", function(e){
+      if (e.key === "Enter"){ e.preventDefault(); g.querySelector("#gSubmit").click(); }
+    });
+  });
   g.querySelector("#gBack").onclick = function(){
     g.querySelector("#gAuth").hidden = true; g.querySelector("#gChoices").hidden = false; say({});
   };
@@ -4290,6 +4298,12 @@ function openAccount(){
     const r = await doSignIn(c[0], c[1]); busy(false); say(r);
     if (r.ok) setTimeout(openAccount, 700);
   };
+  /* Enter = Sign in here too, same rule as the gate (8/20) */
+  ["#aEmail", "#aPw"].forEach(function(sel){
+    wrap.querySelector(sel).addEventListener("keydown", function(e){
+      if (e.key === "Enter"){ e.preventDefault(); wrap.querySelector("#aIn").click(); }
+    });
+  });
   wrap.querySelector("#aUp").onclick = async function(){
     const c = creds();
     if (!c[0] || !c[1]) return say({ error: "Email and password, both." });
