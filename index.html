@@ -3835,11 +3835,15 @@ function syncJotRow(j){
     duration_s: dur,
     /* explicit null ON PURPOSE: an edit pushed after a delete elsewhere
        clears the tombstone - the edit is the newer intent and wins */
-    deleted_at: null
+    deleted_at: null,
+    locked: !!j.locked
   };
+  /* ⚠ ALWAYS present, null when absent - PostgREST refuses a bulk insert
+     whose rows differ in shape ("All object keys must match", caught live on
+     his first real push, 8/20). Uniform rows or no rows. */
   for (const k of ["split_from","topic","kind","day_label","form",
-                   "weekday_written","date_original","src_doc","locked"])
-    if (j[k] !== undefined && j[k] !== null) row[k] = j[k];
+                   "weekday_written","date_original","src_doc"])
+    row[k] = j[k] !== undefined ? j[k] : null;
   return row;
 }
 function syncParaRows(j){
