@@ -1507,8 +1507,8 @@ const DAYPARTS = [
   [ 360, "morning",    "Early Muse"      ],   // 06:00 - 08:59  (ruled 8/20)
   [ 540, "midmorning", "Brunch Brief"    ],   // 09:00 - 11:59
   [ 720, "midday",     "Noon Doodle"     ],   // 12:00 - 14:59
-  [ 900, "afternoon",  "Noon Drift"      ],   // 15:00 - 17:59  (ruled 8/20; sits beside Noon Doodle - named, his to re-rule)
-  [1080, "evening",    "Evening Echo"     ],   // 18:00 - 20:59
+  [ 900, "afternoon",  "Back Drift"      ],   // 15:00 - 17:59  (ruled 8/20)
+  [1080, "evening",    "Sunset Echo"      ],   // 18:00 - 20:59  (ruled 8/20)
   [1260, "night",      "Nightcap Note"    ],   // 21:00 - 23:59
 ];
 const partOf = d => DAYPARTS.filter(p => d.getHours()*60 + d.getMinutes() >= p[0]).pop();
