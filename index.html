@@ -249,7 +249,7 @@ header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
 #padq{flex:1;min-width:0}
 .pcat{font-size:var(--f0);font-weight:700;letter-spacing:var(--tr-micro);color:var(--accent);margin-bottom:3px}
 .pq{font-size:var(--f4);font-weight:600;line-height:1.3}
-#lines{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding-top:8px;
+#lines{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;touch-action:pan-y pinch-zoom;   /* pinch to zoom stays live on the paper (ruled 8/20) */padding-top:8px;
   background-image:repeating-linear-gradient(transparent 0 calc(var(--line) - 1px),
     var(--rule) calc(var(--line) - 1px) var(--line));
   background-position:0 8px;background-attachment:local}
