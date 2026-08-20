@@ -1038,8 +1038,13 @@ body::before{
 .acct{padding:14px 2px;display:flex;flex-direction:column;gap:9px;max-width:420px}
 .acct .who{font-weight:800;font-size:15px}
 .acct .note{font-size:12.5px;color:var(--muted);line-height:1.45}
+/* ⚠ was background:#fff with color:var(--ink) - in dark mode that is cream
+   text on a hard-coded white field, so everything he TYPED was invisible
+   (caught live on Sign up, 8/20). Same token-pairing rule as .abtn below:
+   surface and text from one family, never one token and one constant. */
 .ain{font:inherit;font-size:15px;padding:11px 12px;border:1px solid var(--rule);
-     border-radius:8px;background:#fff;color:var(--ink);min-height:44px}
+     border-radius:8px;background:var(--card);color:var(--ink);min-height:44px}
+.ain::placeholder{color:var(--muted)}
 .ain:focus{outline:3px solid var(--accent);outline-offset:1px}
 .abtn{font:inherit;font-weight:700;font-size:14px;padding:11px 12px;min-height:44px;
       border:1px solid var(--rule);border-radius:8px;background:var(--card);color:var(--ink);
