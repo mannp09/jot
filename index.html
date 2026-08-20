@@ -1059,6 +1059,14 @@ body::before{
 .amsg{font-size:13px;min-height:18px;line-height:1.45}
 .amsg.bad{color:#b3261e}
 .amsg.good{color:var(--ink)}
+/* in-flight state: a quiet ring ahead of the line, never a bare word */
+.amsg.spin::before{content:"";display:inline-block;width:11px;height:11px;
+  border:2px solid var(--rule);border-top-color:var(--accent);border-radius:50%;
+  margin-right:7px;vertical-align:-2px;animation:aspin .8s linear infinite}
+@keyframes aspin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){
+  .amsg.spin::before{animation:none;border-color:var(--accent)}
+}
 
 .gate{position:fixed;inset:0;z-index:99;background:var(--paper);   /* same paper as the questions page (ruled 8/20) */
       display:flex;align-items:center;justify-content:center;padding:22px}
@@ -3884,9 +3892,23 @@ function syncStatusLine(){ return SYNC_STATE.line; }
 const sEnc = encodeURIComponent;
 const inList = ids => 'in.(' + ids.map(x => '"' + String(x).replace(/"/g, "") + '"').join(",") + ')';
 
-async function syncFlush(){
-  if (SYNC_STATE.running || !auth.signedIn || demoActive() || STORE_LOCKED) return { ok: "waiting" };
+/* ! One flush at a time - and a second caller JOINS the running one rather
+   than being told "waiting". His first real push proved why: the boot flush
+   was mid-corpus when he pressed Sync now, and the button shrugged at him
+   while 61 jots were in fact flowing up. */
+let _syncInflight = null;
+function syncFlush(){
+  if (_syncInflight) return _syncInflight;
+  _syncInflight = _syncRun().finally(function(){ _syncInflight = null; });
+  return _syncInflight;
+}
+
+async function _syncRun(){
+  if (!auth.signedIn) return { error: "Not signed in." };
+  if (demoActive()) return { ok: "Demo open - sync resumes when you leave it." };
+  if (STORE_LOCKED) return { error: "The store is locked, so sync refused to touch it." };
   SYNC_STATE.running = true;
+  SYNC_STATE.line = "Syncing...";
   const fail = m => { SYNC_STATE.line = m; return { error: m }; };
   try {
     if (!(await sbEnsureFresh())) return fail("Session expired. Sign in again.");
@@ -4181,9 +4203,9 @@ async function entryGate(){
   }catch(e){}
 
   const msgEl = g.querySelector("#gMsg");
-  const say = function(r){
+  const say = function(r, spin){
     msgEl.textContent = r.error || r.ok || "";
-    msgEl.className = "amsg" + (r.error ? " bad" : " good");
+    msgEl.className = "amsg" + (r.error ? " bad" : " good") + (spin ? " spin" : "");
   };
   let authMode = "login";
   const creds = function(){
@@ -4221,7 +4243,7 @@ async function entryGate(){
   };
   g.querySelector("#gSkip").onclick = close;
   g.querySelector("#gDemo").onclick = async function(){
-    busy(true); say({ ok:"Loading five fictional years..." });
+    busy(true); say({ ok:"Loading five fictional years..." }, true);
     const result = await startDemo(); busy(false); say(result);
     if (result.ok) close();
   };
@@ -4229,7 +4251,7 @@ async function entryGate(){
     const c = creds();
     if (!c[0] || !c[1]) return say({ error: "Email and password, both." });
     if (authMode === "signup" && c[1].length < 6) return say({ error: "Password needs at least 6 characters." });
-    busy(true); say({ ok:authMode === "signup" ? "Creating..." : "Signing in..." });
+    busy(true); say({ ok:authMode === "signup" ? "Creating your account..." : "Signing you in..." }, true);
     const r = authMode === "signup" ? await doSignUp(c[0], c[1]) : await doSignIn(c[0], c[1]);
     busy(false); say(r);
     if (r.ok && auth.signedIn) setTimeout(close, 600);
@@ -4272,9 +4294,9 @@ function openAccount(){
   if (signed) wrap.querySelector(".who").textContent = auth.email || "";
 
   const msgEl = wrap.querySelector("#aMsg");
-  const say = function(r){
+  const say = function(r, spin){
     msgEl.textContent = r.error || r.ok || "";
-    msgEl.className = "amsg" + (r.error ? " bad" : " good");
+    msgEl.className = "amsg" + (r.error ? " bad" : " good") + (spin ? " spin" : "");
   };
   const creds = function(){
     const e = wrap.querySelector("#aEmail"), p = wrap.querySelector("#aPw");
@@ -4289,7 +4311,7 @@ function openAccount(){
     const paint = function(){ noteEl.textContent = syncStatusLine(); };
     paint();
     wrap.querySelector("#aSync").onclick = async function(){
-      busy(true); say({ ok: "Syncing..." });
+      busy(true); say({ ok: "Syncing your jots..." }, true);
       const r = await syncFlush(); busy(false); say(r); paint();
     };
     wrap.querySelector("#aOut").onclick = function(){ say(doSignOut()); openAccount(); };
@@ -4298,7 +4320,7 @@ function openAccount(){
   wrap.querySelector("#aIn").onclick = async function(){
     const c = creds();
     if (!c[0] || !c[1]) return say({ error: "Email and password, both." });
-    busy(true); say({ ok: "Signing in..." });
+    busy(true); say({ ok: "Signing you in..." }, true);
     const r = await doSignIn(c[0], c[1]); busy(false); say(r);
     if (r.ok) setTimeout(openAccount, 700);
   };
@@ -4312,7 +4334,7 @@ function openAccount(){
     const c = creds();
     if (!c[0] || !c[1]) return say({ error: "Email and password, both." });
     if (c[1].length < 6) return say({ error: "Password needs at least 6 characters." });
-    busy(true); say({ ok: "Creating..." });
+    busy(true); say({ ok: "Creating your account..." }, true);
     const r = await doSignUp(c[0], c[1]); busy(false); say(r);
   };
   wrap.querySelector("#aForgot").onclick = async function(){
