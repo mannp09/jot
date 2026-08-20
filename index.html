@@ -1081,8 +1081,6 @@ body::before{
 .gchoice b{font-size:13px;letter-spacing:var(--tr-label);text-transform:uppercase;
   color:var(--ink)}
 .gchoice span{color:var(--muted)}
-.gchoice.mid{background:color-mix(in srgb,var(--accent) 14%,var(--card));
-  border-color:color-mix(in srgb,var(--accent) 35%,var(--rule))}   /* Login's own shade (ruled 8/20) */
 .gchoice.pri{background:var(--accent);border-color:var(--accent)}
 .gchoice.pri b{color:#fff}
 .gchoice.pri span{color:color-mix(in srgb,#fff 82%,transparent)}
@@ -3819,9 +3817,9 @@ async function entryGate(){
       '<div class="gsub">Moments are meant to be jotted</div>' +
       '<div class="gchoices" id="gChoices">' +
         '<button class="abtn gchoice" id="gSkip"><b>Just Jot</b><span>Keep everything on this device.</span></button>' +
-        '<button class="abtn gchoice mid" id="gInChoice"><b>Login</b><span>Use an existing Jot account.</span></button>' +
+        '<button class="abtn pri gchoice" id="gInChoice"><b>Login</b><span>Use an existing Jot account.</span></button>' +
         '<button class="abtn gchoice" id="gUpChoice"><b>Sign up</b><span>Create an account for future sync.</span></button>' +
-        '<button class="abtn pri gchoice" id="gDemo"><b>Demo</b><span>Explore John Doe, age 25.</span></button>' +
+        '<button class="abtn gchoice" id="gDemo"><b>Demo</b><span>Explore John Doe, age 25.</span></button>' +
       '</div>' +
       '<div class="gauth" id="gAuth" hidden>' +
         '<button class="alink gback" id="gBack">&#8592; Back</button>' +
