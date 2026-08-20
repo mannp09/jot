@@ -426,6 +426,15 @@ header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
      the deck owns the whole space, not a strip at the top of it */
   flex:1 0 auto}
 @media (max-height:700px){ .task{min-height:50px} }
+/* ★ THE DECK IS A WHEEL (his spec, 8/20): "if you were to scroll up or down
+   it would be mind question below count and count above mind." The deck
+   scrolls inside its own container; the list is rendered three times and the
+   scroll position wraps between copies, so both directions cycle forever.
+   The scrollbar is hidden because a wheel has no ends to indicate. */
+#deck{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;display:flex;flex-direction:column;
+  scrollbar-width:none}
+#deck::-webkit-scrollbar{display:none}
 .decktools{display:flex;align-items:center;justify-content:flex-end;gap:7px;min-height:36px}
 /* the deck footer: tally left, tools right, pinned to the bottom.
    ⚠ the pencil FAB is FIXED bottom-right (62px + its offset), so the footer
@@ -2105,7 +2114,17 @@ function renderHome(){
      STRETCH to fill the screen; Edit questions moved down beside the tally.
      The deck is the page - the tools are the footer. */
 
+  const deck = document.createElement("div");
+  deck.id = "deck";
+  home.appendChild(deck);
+
   const visibleItems = activePromptItems();
+  /* ★ three copies of the deck = the wheel. Copies are built by the SAME row
+     code so every clone has live handlers - cloneNode would ship dead rows.
+     Only the middle copy speaks to screen readers. Edit mode is one copy:
+     a wheel cannot be dragged into a new order. */
+  const passes = promptEditMode ? 1 : 3;
+  for (let pass = 0; pass < passes; pass++)
   for (const item of visibleItems){
     const cat = item.id, prompt = item.prompt;
     const n = todayCount(cat);
@@ -2175,7 +2194,7 @@ function renderHome(){
         if (from && from !== cat) persistPromptDeck(reorderActivePromptItem(load().prompt_deck, from, cat, placement));
       });
       row.append(grip, copy, controls);
-      home.appendChild(row);
+      deck.appendChild(row);
       continue;
     }
 
@@ -2218,7 +2237,8 @@ function renderHome(){
        before the screen changes, and it rides the transition out. */
     box.addEventListener("click", () => { row.classList.add("on"); openPad(cat, row); });
     row.append(box, seed, cnt);
-    home.appendChild(row);
+    if (passes === 3 && pass !== 1) row.setAttribute("aria-hidden", "true");
+    deck.appendChild(row);
   }
 
   if (promptEditMode){
@@ -2234,13 +2254,31 @@ function renderHome(){
         restore.addEventListener("click", () => persistPromptDeck(setPromptActive(load().prompt_deck, item.id, true)));
         row.append(text, restore); section.appendChild(row);
       }
-      home.appendChild(section);
+      deck.appendChild(section);
     }
-    if (promptAddMode) home.appendChild(renderPromptForm());
+    if (promptAddMode) deck.appendChild(renderPromptForm());
     const note = document.createElement("div"); note.className = "decknote";
     note.textContent = "Hiding removes a question from Home only. Its category, tags, and past jots stay available.";
-    home.appendChild(note);
+    deck.appendChild(note);
   }
+
+  /* spin the wheel to its middle copy and keep it there: crossing half a set
+     in either direction snaps the position back by one whole set, which the
+     eye cannot see because the content is identical. Row heights are pinned
+     so N rows still fill the screen exactly (the 8/20 stretch ruling). */
+  if (!promptEditMode) requestAnimationFrame(() => {
+    const rows = [...deck.querySelectorAll(".task")];
+    if (!rows.length || !deck.clientHeight) return;
+    const nOne = rows.length / 3;
+    const rowH = Math.max(50, Math.floor(deck.clientHeight / nOne) - 6 /* .task margins */);
+    rows.forEach(r => { r.style.flex = "0 0 auto"; r.style.height = rowH + "px"; });
+    const setH = deck.scrollHeight / 3;
+    deck.scrollTop = setH;
+    deck.onscroll = () => {
+      if (deck.scrollTop < setH * 0.5) deck.scrollTop += setH;
+      else if (deck.scrollTop > setH * 1.5) deck.scrollTop -= setH;
+    };
+  });
 
   /* one honest line of state, because the point of the list is visibility */
   const t = new Date(), key = t.getFullYear() + "-" + p2(t.getMonth()+1) + "-" + p2(t.getDate());
