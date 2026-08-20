@@ -305,19 +305,22 @@ header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
   transform:translateX(-102%);transition:transform .24s ease;
   overflow-y:auto;overscroll-behavior:contain}
 #drawer.on{transform:none;box-shadow:var(--atelier-shadow-up,0 10px 40px rgb(0 0 0 / .25))}
-/* ★ on desktop the drawer is an EXTENSION OF THE NOTEPAD (his annotation,
-   8/20): same inset, same tinted paper, same edge and 28px left corners as
-   the sheet, and its left edge sits exactly on the sheet's left edge - it
-   reads as the notebook's cover folding open, not a separate panel. */
+/* ★★ on desktop the drawer is a DOCK, not a modal (ruled 8/20: "have both
+   screens home at same time"): its own rounded sheet - both corners, same
+   tinted paper and edge as the notepad - sitting beside the app, which slides
+   over to make room. The burger toggles it; no scrim, nothing dims. */
 @media (min-width:760px){
   #drawer{
-    top:20px;bottom:20px;
-    left:max(20px, calc((100vw - 1180px) / 2));
-    border-radius:28px 0 0 28px;
+    top:20px;bottom:20px;left:20px;
+    border-radius:28px;
     border:1px solid color-mix(in srgb,var(--atelier-edge) 82%,transparent);
-    border-right:1.5px solid var(--rule);
+    box-shadow:var(--atelier-shadow-up);
     padding-top:24px
   }
+  #scrim{display:none}
+  #app,#lib{transition:margin .24s ease,max-width .24s ease,left .24s ease}
+  body.dopen #app{margin-left:356px;margin-right:20px;max-width:calc(100vw - 376px)}
+  body.dopen #lib{left:356px;right:20px;margin:0;max-width:none}
 }
 @media (prefers-reduced-motion: reduce){
   #drawer,#scrim{transition:none}
@@ -354,6 +357,10 @@ header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
   min-height:52px;padding:0 16px;border:1px solid var(--rule);border-radius:13px;
   background:var(--card);color:inherit;font:600 var(--f3)/1.3 inherit;
   cursor:pointer;text-align:left;width:100%}
+/* ⚠ the LABEL never wraps and the sub stays right-ranged - "JUST / JOT" split
+   across two lines was the alignment bug he circled (8/20) */
+.mrow > span:first-child{flex:0 0 auto;white-space:nowrap}
+.mrow .sub{text-align:right}
 /* ★ label and sub-label are the SAME color on purpose (ruled 8/20:
    "make sure both reds are same color, confirm same with green"). */
 .mrow.danger{color:#B3342A}
@@ -1130,9 +1137,12 @@ body::before{
 
 
 /* ★ fills the page since 8/20 ("account screen to fill the width") - on
-   desktop the auth half and the data half sit side by side across the 920. */
-.acct{padding:14px 2px;display:flex;flex-direction:column;gap:9px}
-.acctwrap{display:grid;gap:0 32px}
+   desktop the auth half and the data half sit side by side across the 920.
+   ★ ONE spacing rhythm between the three sections (his fix, 8/20): the grid
+   row-gap is the only vertical space between Account, Options and Data -
+   no per-section margins to drift apart. */
+.acct{padding:6px 2px;display:flex;flex-direction:column;gap:9px}
+.acctwrap{display:grid;gap:18px 32px}
 @media (min-width:760px){ .acctwrap{grid-template-columns:1fr 1fr;align-items:start} }
 .acct .who{font-weight:800;font-size:15px}
 .acct .note{font-size:12.5px;color:var(--muted);line-height:1.45}
@@ -1473,7 +1483,7 @@ header,#padtop,#libtop{min-height:58px}
      Navigation between AREAS, not a settings dump - each row is a place. -->
 <div id="scrim" hidden></div>
 <nav id="drawer" aria-label="Areas" aria-hidden="true">
-  <div class="dhead"><div class="brand">JOT</div></div>
+  <!-- no wordmark here (ruled 8/20): the header already carries it -->
   <button class="drow" type="button" data-nav="write"><b>Write</b><span>The questions</span></button>
   <button class="drow" type="button" data-nav="library"><b>Library</b><span>Every jot, searchable</span></button>
   <button class="drow" type="button" data-nav="patterns"><b>Patterns</b><span>When and what</span></button>
@@ -2763,14 +2773,25 @@ function openDrawer(){
   const here = lib.classList.contains("on") ? null : "write";
   if (here) drawer.querySelector('[data-nav="' + here + '"]').classList.add("here");
   scrim.hidden = false;
-  requestAnimationFrame(() => { drawer.classList.add("on"); scrim.classList.add("on"); });
+  /* ⚠ synchronous, with a forced reflow for the transition - the old
+     requestAnimationFrame version simply never fired in a backgrounded tab,
+     so the drawer silently refused to open there (caught 8/20). */
+  void scrim.offsetWidth;
+  drawer.classList.add("on"); scrim.classList.add("on");
+  document.body.classList.add("dopen");
   drawer.setAttribute("aria-hidden", "false");
 }
 function closeDrawer(){
   drawer.classList.remove("on"); scrim.classList.remove("on");
+  document.body.classList.remove("dopen");
   drawer.setAttribute("aria-hidden", "true");
   setTimeout(() => { if (!scrim.classList.contains("on")) scrim.hidden = true; }, 240);
 }
+/* the burger is a TOGGLE - on desktop the drawer docks and stays */
+function toggleDrawer(){
+  if (drawer.classList.contains("on")) closeDrawer(); else openDrawer();
+}
+const drawerIsModal = () => matchMedia("(max-width:759px)").matches;
 function goWrite(){
   if (demoActive()) exitDemo(false);
   lib.classList.remove("on");
@@ -2785,7 +2806,11 @@ drawer.addEventListener("click", async e => {
   const row = e.target.closest(".drow");
   if (!row) return;
   const nav = row.dataset.nav;
-  closeDrawer();
+  /* mobile: the drawer is modal and yields the screen. desktop: it is a dock
+     and STAYS - both screens at once (ruled 8/20). */
+  if (drawerIsModal()) closeDrawer();
+  drawer.querySelectorAll(".drow").forEach(r => r.classList.remove("here"));
+  row.classList.add("here");
   if (nav === "write"){
     /* leaving the entry surface by any door stamps the seen-flag */
     localStorage.setItem(GATEKEY, "1");
@@ -2815,8 +2840,8 @@ function brandLockup(scope){
 }
 brandLockup();
 
-$("#menu").addEventListener("click", openDrawer);
-$("#libMenu").addEventListener("click", openDrawer);
+$("#menu").addEventListener("click", toggleDrawer);
+$("#libMenu").addEventListener("click", toggleDrawer);
 /* the About fold: one arrow, two states (his ask, 8/20) */
 $("#dAboutBtn").addEventListener("click", e => {
   e.stopPropagation();
@@ -4371,8 +4396,8 @@ function openAccount(entry){
         '<button class="abtn pri" id="aSync">Sync now</button>' +
         '<button class="abtn" id="aOut">Sign out</button>'
       : '<div class="note">Midnight Jot works with or without an account, which allows users to sync jots between devices.</div>' +
-        '<input class="ain" id="aEmail" type="email" placeholder="email" autocomplete="username">' +
-        '<input class="ain" id="aPw" type="password" placeholder="password" autocomplete="current-password">' +
+        '<input class="ain" id="aEmail" type="email" placeholder="Email" autocomplete="username">' +
+        '<input class="ain" id="aPw" type="password" placeholder="Password" autocomplete="current-password">' +
         '<button class="abtn pri" id="aIn">Sign in</button>' +
         '<button class="abtn" id="aUp">Create account</button>' +
         '<button class="alink" id="aForgot">Forgot password</button>') +
@@ -4398,12 +4423,13 @@ function openAccount(entry){
 
   /* ── OPTIONS - the start screen's two non-auth doors, kept (his spec 8/20) */
   const opts = document.createElement("div"); opts.className = "acct";
-  opts.innerHTML = '<div class="lab" style="margin-top:14px">OPTIONS</div>';
+  opts.innerHTML = '<div class="lab">OPTIONS</div>';
   const justJot = document.createElement("button"); justJot.className = "mrow";
   justJot.innerHTML = '<span>Just Jot</span><span class="sub">KEEP EVERYTHING ON THIS DEVICE</span>';
   justJot.onclick = () => { seen(); if (demoActive()) exitDemo(false); lib.classList.remove("on"); };
   const demoBtn = document.createElement("button");
-  demoBtn.className = demoActive() ? "mrow danger" : "mrow";
+  /* green: it starts something (ruled 8/20, same family as the old Start screen row) */
+  demoBtn.className = demoActive() ? "mrow danger" : "mrow go";
   demoBtn.innerHTML = demoActive()
     ? '<span>Exit demo</span><span class="sub">RETURN TO YOUR LOCAL JOTS</span>'
     : '<span>Demo</span><span class="sub">EXPLORE JOHN DOE, AGE 25</span>';
@@ -4423,7 +4449,7 @@ function openAccount(entry){
   const wAll = viewJots(s.jots).reduce((a, j) => a + words(j), 0);
   const nImp = s.jots.reduce((n, j) => n + (isImported(j) ? 1 : 0), 0);
   const data = document.createElement("div"); data.className = "acct";
-  data.innerHTML = '<div class="lab" style="margin-top:14px">DATA</div>';
+  data.innerHTML = '<div class="lab">DATA</div>';
   const importButton = document.createElement("button"); importButton.className = "mrow";
   importButton.innerHTML = '<span>Import</span><span class="sub">MERGE A FILE IN</span>';
   const fileInput = document.createElement("input"); fileInput.type = "file";
