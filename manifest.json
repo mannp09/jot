@@ -1,6 +1,6 @@
 {
-  "name": "jot",
-  "short_name": "JOT",
+  "name": "Midnight Jot",
+  "short_name": "Midnight Jot",
   "description": "Capture a thought the second it lands. Everything else is derived.",
   "start_url": "./index.html",
   "scope": "./",

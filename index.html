@@ -24,7 +24,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<title>jot</title>
+<title>Midnight Jot</title>
 <script>
 /* THEME_PURE_START */
 const THEME_KEY = "jot.theme";
@@ -1115,7 +1115,11 @@ body::before{
 }
 
 
-.acct{padding:14px 2px;display:flex;flex-direction:column;gap:9px;max-width:420px}
+/* ★ fills the page since 8/20 ("account screen to fill the width") - on
+   desktop the auth half and the data half sit side by side across the 920. */
+.acct{padding:14px 2px;display:flex;flex-direction:column;gap:9px}
+.acctwrap{display:grid;gap:0 32px}
+@media (min-width:760px){ .acctwrap{grid-template-columns:1fr 1fr;align-items:start} }
 .acct .who{font-weight:800;font-size:15px}
 .acct .note{font-size:12.5px;color:var(--muted);line-height:1.45}
 /* ⚠ was background:#fff with color:var(--ink) - in dark mode that is cream
@@ -1148,23 +1152,34 @@ body::before{
   .amsg.spin::before{animation:none;border-color:var(--accent)}
 }
 
-.gate{position:fixed;inset:0;z-index:99;background:var(--paper);   /* same paper as the questions page (ruled 8/20) */
-      display:flex;align-items:center;justify-content:center;padding:22px}
-.gcard{width:100%;max-width:330px;display:flex;flex-direction:column;gap:9px}
-.ghead{display:flex;align-items:center;justify-content:space-between;gap:12px}
+/* ★ the gate is a PAGE, not a floating card (ruled 8/20: "take up the screen
+   like we did with questions page"). Same padding as #app so the burger,
+   wordmark and theme toggle sit EXACTLY where the home header holds them;
+   the choices stretch to fill the height the way the questions do. */
+.gate{position:fixed;inset:0;z-index:99;background:var(--paper);
+      display:block;overflow-y:auto;overscroll-behavior:contain;
+      padding:max(env(safe-area-inset-top),14px) var(--pad) max(env(safe-area-inset-bottom),18px)}
+.gcard{width:100%;min-height:100%;display:flex;flex-direction:column;gap:9px}
+@media (min-width:760px){ .gcard{max-width:920px;margin-inline:auto} }
+.ghead{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  min-height:58px;margin-bottom:5px}
+@media (max-width:759px){
+  .ghead{padding-bottom:4px;border-bottom:1px solid color-mix(in srgb,var(--rule) 62%,transparent)}
+}
 .gside{display:flex;align-items:flex-start;gap:10px}
 .gclock{text-align:right;font-size:11px;font-weight:700;letter-spacing:.06em;
   text-transform:uppercase;color:var(--muted);line-height:1.55}
 .gclock b{color:var(--accent);font-weight:800}
 .glogo{color:var(--ink)}   /* wordmark styling comes from .brand, same as the home header (ruled 8/20) */
 .gsub{font-size:13.5px;color:var(--muted);margin-bottom:4px;line-height:1.45}
+.gauth{max-width:460px}   /* a form wants a line length even on a wide page */
 .gskip{align-self:center;margin-top:6px}
 .gfoot{font-size:11.5px;color:var(--muted);text-align:center;line-height:1.5;margin-top:2px}
-.gchoices{display:flex;flex-direction:column;gap:10px;margin-top:6px}
+.gchoices{display:flex;flex-direction:column;gap:10px;margin-top:6px;flex:1;min-height:0}
 /* ★ four vertically stacked, full-width, equal-height choices (ruled 8/20:
    "4 vertical... clean, best practices"). One primary, filled, at the bottom
    where the thumb lives; the rest quiet and identical. */
-.gchoice{width:100%;min-height:58px;text-align:left;display:flex;flex-direction:column;
+.gchoice{width:100%;min-height:58px;flex:1 1 0;text-align:left;display:flex;flex-direction:column;
   align-items:flex-start;justify-content:center;gap:3px;padding:11px 14px}
 /* ⚠⚠ ROOT CAUSE of the washed gate: .abtn ships a white background that the
    dark theme never overrides, so dark-mode ink (cream) sat on white cards.
@@ -4460,7 +4475,10 @@ function openAccount(){
   back.innerHTML = I["arrow-left"] + '<span class="fsl">BACK</span>';
   back.onclick = renderLib;
   libBody.appendChild(back);
-  libBody.appendChild(wrap);
+  const grid = document.createElement("div");
+  grid.className = "acctwrap";
+  libBody.appendChild(grid);
+  grid.appendChild(wrap);
 
   /* ── DATA - moved here from the library in the 8/20 redesign. Import,
      Export and the journal archive are account-of-record work, not reading. */
@@ -4500,7 +4518,7 @@ function openAccount(){
     importButton.querySelector(".sub").textContent = "OFF IN DEMO";
     exportButton.querySelector(".sub").textContent = "OFF IN DEMO";
   }
-  libBody.appendChild(data);
+  grid.appendChild(data);
   /* textContent, not innerHTML - an email is user input and must never be
      interpolated into markup. */
   if (signed) wrap.querySelector(".who").textContent = auth.email || "";
