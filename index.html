@@ -300,11 +300,25 @@ header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
 #scrim.on{opacity:1;pointer-events:auto}
 #drawer{position:fixed;top:0;bottom:0;left:0;z-index:400;
   width:min(78vw,300px);display:flex;flex-direction:column;gap:4px;
-  background:var(--paper);border-right:1.5px solid var(--rule);
+  background:var(--tint,var(--paper));border-right:1.5px solid var(--rule);
   padding:18px 14px calc(14px + env(safe-area-inset-bottom));
   transform:translateX(-102%);transition:transform .24s ease;
   overflow-y:auto;overscroll-behavior:contain}
 #drawer.on{transform:none;box-shadow:var(--atelier-shadow-up,0 10px 40px rgb(0 0 0 / .25))}
+/* ★ on desktop the drawer is an EXTENSION OF THE NOTEPAD (his annotation,
+   8/20): same inset, same tinted paper, same edge and 28px left corners as
+   the sheet, and its left edge sits exactly on the sheet's left edge - it
+   reads as the notebook's cover folding open, not a separate panel. */
+@media (min-width:760px){
+  #drawer{
+    top:20px;bottom:20px;
+    left:max(20px, calc((100vw - 1180px) / 2));
+    border-radius:28px 0 0 28px;
+    border:1px solid color-mix(in srgb,var(--atelier-edge) 82%,transparent);
+    border-right:1.5px solid var(--rule);
+    padding-top:24px
+  }
+}
 @media (prefers-reduced-motion: reduce){
   #drawer,#scrim{transition:none}
 }
@@ -2772,10 +2786,9 @@ drawer.addEventListener("click", async e => {
   if (!row) return;
   const nav = row.dataset.nav;
   closeDrawer();
-  const gate = document.querySelector(".gate");
   if (nav === "write"){
-    /* from the gate, Write means "Just Jot" - same door, same stamp */
-    if (gate){ gate.querySelector("#gSkip").click(); return; }
+    /* leaving the entry surface by any door stamps the seen-flag */
+    localStorage.setItem(GATEKEY, "1");
     goWrite();
   }
   if (nav === "library"){ openLib(); }
@@ -4334,123 +4347,19 @@ async function entryGate(){
   await sbEnsureFresh();                 /* silent: keeps him signed in */
   if (auth.signedIn) return;             /* signed in -> straight to writing */
   if (localStorage.getItem(GATEKEY)) return;   /* <-- DELETE THIS LINE for a hard wall */
-
-  const g = document.createElement("div");
-  g.className = "gate";
-  g.innerHTML =
-    '<div class="gcard">' +
-      '<div class="ghead"><button class="iconbtn burger" id="gBurger" type="button" aria-label="Open library"><i></i><i></i><i></i></button>' +
-      '<div class="glogo brand">JOT</div>' +
-      '<div class="gside"><div class="gclock" id="gClock"></div>' +
-      '<button class="iconbtn theme-toggle" id="gTheme" type="button" aria-label="Switch theme"></button></div></div>' +
-      '<div class="gsub">Moments are meant to be jotted.</div>' +
-      '<div class="gchoices" id="gChoices">' +
-        '<button class="abtn gchoice" id="gSkip"><b>Just Jot</b><span>Keep everything on this device.</span></button>' +
-        '<button class="abtn pri gchoice" id="gInChoice"><b>Login</b><span>Use an existing Jot account.</span></button>' +
-        '<button class="abtn gchoice" id="gUpChoice"><b>Sign up</b><span>Create an account to sync devices.</span></button>' +
-        '<button class="abtn gchoice" id="gDemo"><b>Demo</b><span>Explore John Doe, age 25.</span></button>' +
-      '</div>' +
-      '<div class="gauth" id="gAuth" hidden>' +
-        '<button class="alink gback" id="gBack">&#8592; Back</button>' +
-        '<div class="lab" id="gAuthTitle">LOGIN</div>' +
-        '<input class="ain" id="gEmail" type="email" placeholder="email" autocomplete="username">' +
-        '<input class="ain" id="gPw" type="password" placeholder="password" autocomplete="current-password">' +
-        '<button class="abtn pri" id="gSubmit">Login</button>' +
-        '<button class="alink" id="gForgot">Forgot password</button>' +
-      '</div>' +
-      '<div class="amsg" id="gMsg"></div>'
-    '</div>';
-  document.body.appendChild(g);
-  if (typeof brandLockup === "function") brandLockup(g);
-  /* ★ the gate speaks the home header's language (ruled 8/20): live clock,
-     his fun/generic day-part naming, and the same theme toggle. The toggle
-     PROXIES #themeToggle because attribute delegation ran at boot, before
-     this gate existed; the icon is copied so the two can never drift. */
-  try{
-    var gc = g.querySelector("#gClock");
-    var paintGClock = function(){
-      var nw = new Date(), pt = partOf(nw);
-      gc.innerHTML = longDate(nw) + "<br><span>" + clk(nw) + " " + tzAbbr(nw) +
-        " · <b id=\"gDp\" role=\"button\" tabindex=\"0\" style=\"cursor:pointer\">" + partName(pt) + "</b></span>";
-    };
-    paintGClock(); setInterval(paintGClock, 30000);
-    gc.addEventListener("click", function(e){
-      if (e.target && e.target.id === "gDp"){
-        localStorage.setItem(NAMING, showingFun() ? "generic" : "fun");
-        paintGClock(); if (typeof clock === "function") clock();
-      }
-    });
-    var gb = g.querySelector("#gBurger");
-    if (gb) gb.onclick = function(){ if (typeof openDrawer === "function") openDrawer(); };
-    var gt = g.querySelector("#gTheme"), real = document.getElementById("themeToggle");
-    if (gt && real){
-      gt.innerHTML = real.innerHTML;
-      gt.onclick = function(){ real.click(); gt.innerHTML = real.innerHTML; };
-    } else if (gt){ gt.hidden = true; }
-  }catch(e){}
-
-  const msgEl = g.querySelector("#gMsg");
-  const say = function(r, spin){
-    msgEl.textContent = r.error || r.ok || "";
-    msgEl.className = "amsg" + (r.error ? " bad" : " good") + (spin ? " spin" : "");
-  };
-  let authMode = "login";
-  const creds = function(){
-    return [g.querySelector("#gEmail").value.trim(), g.querySelector("#gPw").value];
-  };
-  const busy = function(b){
-    g.querySelectorAll("button").forEach(function(x){ x.disabled = b; });
-  };
-  const close = function(){
-    localStorage.setItem(GATEKEY, "1");
-    g.remove();
-  };
-
-  const showAuth = function(modeName){
-    authMode = modeName;
-    g.querySelector("#gChoices").hidden = true;
-    g.querySelector("#gAuth").hidden = false;
-    g.querySelector("#gAuthTitle").textContent = modeName === "signup" ? "SIGN UP" : "LOGIN";
-    g.querySelector("#gSubmit").textContent = modeName === "signup" ? "Sign up" : "Login";
-    g.querySelector("#gForgot").hidden = modeName === "signup";
-    g.querySelector("#gEmail").focus();
-  };
-  g.querySelector("#gUpChoice").onclick = () => showAuth("signup");
-  g.querySelector("#gInChoice").onclick = () => showAuth("login");
-  /* Enter in either field IS the button (his read of the form, 8/20: "when i
-     press enter here - it means im hitting login"). A div is not a <form>, so
-     without this the keypress silently did nothing. */
-  ["#gEmail", "#gPw"].forEach(function(sel){
-    g.querySelector(sel).addEventListener("keydown", function(e){
-      if (e.key === "Enter"){ e.preventDefault(); g.querySelector("#gSubmit").click(); }
-    });
-  });
-  g.querySelector("#gBack").onclick = function(){
-    g.querySelector("#gAuth").hidden = true; g.querySelector("#gChoices").hidden = false; say({});
-  };
-  g.querySelector("#gSkip").onclick = close;
-  g.querySelector("#gDemo").onclick = async function(){
-    busy(true); say({ ok:"Loading five fictional years..." }, true);
-    const result = await startDemo(); busy(false); say(result);
-    if (result.ok) close();
-  };
-  g.querySelector("#gSubmit").onclick = async function(){
-    const c = creds();
-    if (!c[0] || !c[1]) return say({ error: "Email and password, both." });
-    if (authMode === "signup" && c[1].length < 6) return say({ error: "Password needs at least 6 characters." });
-    busy(true); say({ ok:authMode === "signup" ? "Creating your account..." : "Signing you in..." }, true);
-    const r = authMode === "signup" ? await doSignUp(c[0], c[1]) : await doSignIn(c[0], c[1]);
-    busy(false); say(r);
-    if (r.ok && auth.signedIn) setTimeout(close, 600);
-  };
-  g.querySelector("#gForgot").onclick = async function(){
-    const c = creds();
-    if (!c[0]) return say({ error: "Put your email in the box first." });
-    busy(true); const r = await doRecover(c[0]); busy(false); say(r);
-  };
+  /* ★★ THE START SCREEN IS THE ACCOUNT PAGE (his idea, 8/20: "we remove
+     start screen... account screen will replace start screen"). One auth
+     surface instead of two that drift, and the library shell brings the
+     mirrored header for free. Entry mode swaps BACK for the tagline and
+     stamps the seen-flag on whichever door he takes. */
+  lib.classList.add("on");
+  openAccount(true);
 }
 
-function openAccount(){
+function openAccount(entry){
+  /* entry=true: this page IS the start screen (ruled 8/20) - tagline instead
+     of BACK, and every door out stamps the seen-flag. */
+  const seen = () => localStorage.setItem(GATEKEY, "1");
   const signed = auth.signedIn;
   const wrap = document.createElement("div");
   wrap.className = "acct";
@@ -4470,15 +4379,43 @@ function openAccount(){
     '<div class="amsg" id="aMsg"></div>';
 
   libBody.innerHTML = "";
-  const back = document.createElement("button");
-  back.className = "cog"; back.type = "button";
-  back.innerHTML = I["arrow-left"] + '<span class="fsl">BACK</span>';
-  back.onclick = renderLib;
-  libBody.appendChild(back);
+  if (entry){
+    const sub = document.createElement("div");
+    sub.className = "gsub";
+    sub.textContent = "Moments are meant to be jotted.";
+    libBody.appendChild(sub);
+  } else {
+    const back = document.createElement("button");
+    back.className = "cog"; back.type = "button";
+    back.innerHTML = I["arrow-left"] + '<span class="fsl">BACK</span>';
+    back.onclick = renderLib;
+    libBody.appendChild(back);
+  }
   const grid = document.createElement("div");
   grid.className = "acctwrap";
   libBody.appendChild(grid);
   grid.appendChild(wrap);
+
+  /* ── OPTIONS - the start screen's two non-auth doors, kept (his spec 8/20) */
+  const opts = document.createElement("div"); opts.className = "acct";
+  opts.innerHTML = '<div class="lab" style="margin-top:14px">OPTIONS</div>';
+  const justJot = document.createElement("button"); justJot.className = "mrow";
+  justJot.innerHTML = '<span>Just Jot</span><span class="sub">KEEP EVERYTHING ON THIS DEVICE</span>';
+  justJot.onclick = () => { seen(); if (demoActive()) exitDemo(false); lib.classList.remove("on"); };
+  const demoBtn = document.createElement("button");
+  demoBtn.className = demoActive() ? "mrow danger" : "mrow";
+  demoBtn.innerHTML = demoActive()
+    ? '<span>Exit demo</span><span class="sub">RETURN TO YOUR LOCAL JOTS</span>'
+    : '<span>Demo</span><span class="sub">EXPLORE JOHN DOE, AGE 25</span>';
+  demoBtn.onclick = async () => {
+    if (demoActive()){ exitDemo(true); return; }
+    demoBtn.disabled = true;
+    const r = await startDemo();
+    demoBtn.disabled = false;
+    if (r.error) alert(r.error); else seen();
+  };
+  opts.append(justJot, demoBtn);
+  grid.appendChild(opts);
 
   /* ── DATA - moved here from the library in the 8/20 redesign. Import,
      Export and the journal archive are account-of-record work, not reading. */
@@ -4507,12 +4444,8 @@ function openAccount(){
   else archiveButton.onclick = () => {
     localStorage.setItem(SHOW_IMPORTED, showImported() ? "0" : "1"); openAccount();
   };
-  /* ★ path back to the start screen (ruled 8/20). Clearing the seen-flag and
-     reloading rebuilds the gate exactly as a first visit. */
-  const startScreen = document.createElement("button"); startScreen.className = "mrow go";
-  startScreen.innerHTML = '<span>Start screen</span><span class="sub">SIGN IN · SIGN UP · DEMO</span>';
-  startScreen.onclick = () => { localStorage.removeItem(GATEKEY); location.reload(); };
-  data.append(importButton, exportButton, fileInput, archiveButton, startScreen);
+  /* the old "Start screen" row died with the start screen (his spec, 8/20) */
+  data.append(importButton, exportButton, fileInput, archiveButton);
   if (demoActive()){
     [importButton, exportButton, archiveButton].forEach(b => { b.disabled = true; });
     importButton.querySelector(".sub").textContent = "OFF IN DEMO";
@@ -4552,7 +4485,9 @@ function openAccount(){
     if (!c[0] || !c[1]) return say({ error: "Email and password, both." });
     busy(true); say({ ok: "Signing you in..." }, true);
     const r = await doSignIn(c[0], c[1]); busy(false); say(r);
-    if (r.ok) setTimeout(openAccount, 700);
+    if (r.ok){ seen(); setTimeout(() => {
+      if (entry){ lib.classList.remove("on"); renderHome(); } else openAccount();
+    }, 700); }
   };
   /* Enter = Sign in here too, same rule as the gate (8/20) */
   ["#aEmail", "#aPw"].forEach(function(sel){
@@ -4566,6 +4501,9 @@ function openAccount(){
     if (c[1].length < 6) return say({ error: "Password needs at least 6 characters." });
     busy(true); say({ ok: "Creating your account..." }, true);
     const r = await doSignUp(c[0], c[1]); busy(false); say(r);
+    if (r.ok && auth.signedIn){ seen(); setTimeout(() => {
+      if (entry){ lib.classList.remove("on"); renderHome(); } else openAccount();
+    }, 700); }
   };
   wrap.querySelector("#aForgot").onclick = async function(){
     const c = creds();
