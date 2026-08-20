@@ -22,6 +22,8 @@
      a whole one on the commit log. The theme-color above was also still the
      pre-notepad grey (#FBFAF7) rather than the paper cream. -->
 <link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>jot</title>
 <script>
 /* THEME_PURE_START */
@@ -213,6 +215,17 @@ header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
    stable identity. Manrope is the guide face and it is already embedded. */
 .brand{flex:1;font-size:26px;font-weight:800;letter-spacing:3.5px;
   font-family:'Manrope',sans-serif}
+/* ★ THE MIDNIGHT JOT LOCKUP (his spec, 8/20): JOT as it has always been,
+   MIDNIGHT in bold thick letters directly beneath, spread to EXACTLY the
+   width of JOT. The spread is real flex distribution, letter by letter -
+   letter-spacing cannot hit an exact width. .bt's trailing letter-spacing
+   is cancelled with a negative margin so the width matched is the VISIBLE
+   JOT, not JOT plus a phantom space after the T. */
+.brand .block{display:inline-flex;flex-direction:column;line-height:1;vertical-align:top}
+.brand .bt{letter-spacing:3.5px;margin-right:-3.5px}
+.brand .bsub{display:flex;justify-content:space-between;margin-top:3px;
+  font-size:8.5px;font-weight:900;letter-spacing:0}
+.brand .bsub b{font-weight:900}
 .when{font-size:var(--f1);font-weight:700;letter-spacing:var(--tr-label);color:var(--muted);
   font-variant-numeric:tabular-nums;text-align:right;line-height:1.35}
 .iconbtn{flex:0 0 auto;width:46px;height:46px;border-radius:12px;
@@ -1193,6 +1206,7 @@ body::before{
 }
 #done .ic{width:24px;height:24px}
 .brand{font-size:28px;letter-spacing:4.2px;text-shadow:0 1px 0 #fff}
+.brand .bt{letter-spacing:4.2px;margin-right:-4.2px}
 header,#padtop,#libtop{min-height:58px}
 
 /* Prompt rows stay ruled-paper rows, but now feel like deliberate controls. */
@@ -2705,6 +2719,21 @@ drawer.addEventListener("click", async e => {
     if (r.error) alert(r.error);
   }
 });
+/* ★ one wordmark, applied to every .brand at build time - the gate calls it
+   again for its own late-built logo. Reads "Midnight Jot" to a screen reader;
+   the spread letters are presentation, not text. */
+function brandLockup(scope){
+  (scope || document).querySelectorAll(".brand").forEach(function(el){
+    if (el.dataset.lockup) return;
+    el.dataset.lockup = "1";
+    el.setAttribute("aria-label", "Midnight Jot");
+    el.innerHTML = '<span class="block"><span class="bt" aria-hidden="true">JOT</span>' +
+      '<span class="bsub" aria-hidden="true">' +
+      "MIDNIGHT".split("").map(c => "<b>" + c + "</b>").join("") + "</span></span>";
+  });
+}
+brandLockup();
+
 $("#menu").addEventListener("click", openDrawer);
 $("#libMenu").addEventListener("click", openDrawer);
 /* the About fold: one arrow, two states (his ask, 8/20) */
@@ -4246,7 +4275,7 @@ async function entryGate(){
       '<div class="glogo brand">JOT</div>' +
       '<div class="gside"><div class="gclock" id="gClock"></div>' +
       '<button class="iconbtn theme-toggle" id="gTheme" type="button" aria-label="Switch theme"></button></div></div>' +
-      '<div class="gsub">Moments are meant to be jotted</div>' +
+      '<div class="gsub">jotted.</div>' +
       '<div class="gchoices" id="gChoices">' +
         '<button class="abtn gchoice" id="gSkip"><b>Just Jot</b><span>Keep everything on this device.</span></button>' +
         '<button class="abtn pri gchoice" id="gInChoice"><b>Login</b><span>Use an existing Jot account.</span></button>' +
@@ -4264,6 +4293,7 @@ async function entryGate(){
       '<div class="amsg" id="gMsg"></div>'
     '</div>';
   document.body.appendChild(g);
+  if (typeof brandLockup === "function") brandLockup(g);
   /* ★ the gate speaks the home header's language (ruled 8/20): live clock,
      his fun/generic day-part naming, and the same theme toggle. The toggle
      PROXIES #themeToggle because attribute delegation ran at boot, before
