@@ -408,7 +408,9 @@ header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
      (ruled 8/20: "to the left there needs to be more room"). The red margin
      line at 62px is untouched; the stamp now sits inset inside the margin. */
   #padtop{padding-left:12px}
-  .row::before{left:10px;width:50px}
+  /* ⚠ 50px wrapped 10:35AM onto two lines (ruled 8/20). Nowrap plus a
+     slightly smaller stamp keeps seven characters inside the margin. */
+  .row::before{left:8px;width:52px;white-space:nowrap;font-size:10px;letter-spacing:.2px}
 }
 .box{flex:0 0 auto;width:26px;height:26px;border-radius:7px;cursor:pointer;
   border:2px solid var(--rule);background:transparent;color:transparent;
