@@ -1145,6 +1145,9 @@ body::before{
    row-gap is the only vertical space between Account, Options and Data -
    no per-section margins to drift apart. */
 .acct{padding:6px 2px;display:flex;flex-direction:column;gap:9px}
+/* the entry tagline wears ACCOUNT's exact type (same inherited font, same 2px
+   inset) in the accent - sentence case, not caps (his spec, 8/20) */
+.entrysub{padding:8px 2px 0;color:var(--accent)}
 .acctwrap{display:grid;gap:18px 32px}
 @media (min-width:760px){ .acctwrap{grid-template-columns:1fr 1fr;align-items:start} }
 .acct .who{font-weight:800;font-size:15px}
@@ -4412,7 +4415,7 @@ function openAccount(entry){
   libBody.innerHTML = "";
   if (entry){
     const sub = document.createElement("div");
-    sub.className = "gsub";
+    sub.className = "entrysub";
     sub.textContent = "Moments are meant to be jotted.";
     libBody.appendChild(sub);
   } else {
