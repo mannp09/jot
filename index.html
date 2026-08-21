@@ -318,7 +318,11 @@ header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
     padding-top:24px
   }
   #scrim{display:none}
-  #app,#lib{transition:margin .24s ease,max-width .24s ease,left .24s ease}
+  /* ⚠ NO transition on the sheet, on purpose (his recording, 8/20: "the
+     snapback is messy"). The drawer slides on the compositor; the sheet
+     re-lays-out its width on the main thread - animating both is two clocks
+     that cannot stay in step, and the content tears mid-flight. The sheet
+     snaps in ONE frame and only the drawer glides. */
   /* dock gap = 20px, the same inset rhythm as every other edge on the page.
      ⚠ #app sits inside body's own 20px padding (so 320+20=340); #lib is
      position:fixed and ignores it (so a plain 340). Same visual edge. */
