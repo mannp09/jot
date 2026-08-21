@@ -1400,7 +1400,10 @@ header,#padtop,#libtop{min-height:58px}
   #lines{--paper-margin-x:88px}
   .row{padding-left:96px}
   .row::before{left:26px;width:60px}
-  #libtop{padding-inline:0}   /* the 2px here was the header drifting off Write's column (8/20) */
+  /* the 2px inline pad drifted the header off Write's column, and the 12px
+     bottom PADDING pulled its centered icons 6px above Write's (8/20) -
+     the gap moves to margin so the two headers sit at one level */
+  #libtop{padding-inline:0;padding-bottom:0;margin-bottom:12px}
   .fab{right:24px;bottom:24px}
 }
 
