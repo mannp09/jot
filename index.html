@@ -4423,18 +4423,12 @@ function openAccount(entry){
     '<div class="amsg" id="aMsg"></div>';
 
   libBody.innerHTML = "";
-  if (entry){
-    const sub = document.createElement("div");
-    sub.className = "entrysub";
-    sub.textContent = "Moments are meant to be jotted.";
-    libBody.appendChild(sub);
-  } else {
-    const back = document.createElement("button");
-    back.className = "cog"; back.type = "button";
-    back.innerHTML = I["arrow-left"] + '<span class="fsl">BACK</span>';
-    back.onclick = renderLib;
-    libBody.appendChild(back);
-  }
+  /* ★ ALWAYS the tagline, NEVER a back button (his ruling 8/20 x2: "i still
+     see back button") - the brand and the drawer are the ways out. */
+  const sub = document.createElement("div");
+  sub.className = "entrysub";
+  sub.textContent = "Moments are meant to be jotted.";
+  libBody.appendChild(sub);
   const grid = document.createElement("div");
   grid.className = "acctwrap";
   libBody.appendChild(grid);
