@@ -1190,7 +1190,7 @@ body::before{
       display:block;overflow-y:auto;overscroll-behavior:contain;
       padding:max(env(safe-area-inset-top),14px) var(--pad) max(env(safe-area-inset-bottom),18px)}
 .gcard{width:100%;min-height:100%;display:flex;flex-direction:column;gap:9px}
-@media (min-width:760px){ .gcard{max-width:920px;margin-inline:auto} }
+/* entry page spans the sheet like everything else (ruled 8/20) */
 .ghead{display:flex;align-items:center;justify-content:space-between;gap:12px;
   min-height:58px;margin-bottom:5px}
 @media (max-width:759px){
@@ -1371,14 +1371,21 @@ header,#padtop,#libtop{min-height:58px}
   }
   #app{height:calc(100dvh - 40px);overflow:hidden}
   #lib{inset:20px;height:calc(100dvh - 40px);overflow:hidden}
-  #home,#libtop,#libbody{width:100%;max-width:920px;margin-inline:auto}
+  /* ★★ EVERY page uses the sheet the way the PAD does (ruled 8/20: "spaced
+     out and utilized like it is on the notepad page") - no reading-column
+     cap, content spans the sheet's padded width edge to edge. */
+  #home,#libtop,#libbody{width:100%;max-width:none;margin-inline:0}
+  /* ⚠ #libbody scrolls, and its scrollbar was eating 15px off the content's
+     right edge - the drift he caught between Write and the rest (8/20).
+     Same idiom as the deck wheel: the bar is hidden, the column is exact. */
+  #libbody{scrollbar-width:none}
+  #libbody::-webkit-scrollbar{display:none}
   /* Release the notebook chrome from the old reading-column cap. The small
      responsive inset keeps both corners comfortable without pulling them back
      toward the centre on wide screens. */
-  /* ★ the header rides the SAME 920 column as the content (his arrows, 8/20):
-     the burger sits flush over the question boxes and the moon over the
-     content's right edge - at any sheet width, dock open or closed. */
-  header{width:100%;max-width:920px;margin-inline:auto;padding-inline:0}
+  /* ★ header spans the sheet like the pad's does; burger and moon sit on the
+     same edges as the content below (his arrows, 8/20 x2). */
+  header{width:100%;max-width:none;margin-inline:0;padding-inline:0}
   /* The rounded outer sheet is the notebook. Let its ruled paper meet the
      curved edge instead of rendering as a smaller rectangle inside it. */
   #pad{
@@ -1393,7 +1400,7 @@ header,#padtop,#libtop{min-height:58px}
   #lines{--paper-margin-x:88px}
   .row{padding-left:96px}
   .row::before{left:26px;width:60px}
-  #libtop{padding-inline:2px}
+  #libtop{padding-inline:0}   /* the 2px here was the header drifting off Write's column (8/20) */
   .fab{right:24px;bottom:24px}
 }
 
