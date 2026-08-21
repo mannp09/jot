@@ -1452,6 +1452,14 @@ header,#padtop,#libtop{min-height:58px}
 }
 :root[data-theme="dark"][data-day]{--tint:var(--paper)}
 :root[data-theme="dark"] body::before{opacity:.16;filter:invert(1)}
+/* ⚠⚠ THE REAL CAUSE OF THE "OVERLAP TYPO" HE PHOTOGRAPHED (8/21 6:52am).
+   `.brand` carries `text-shadow:0 1px 0 #fff` — a HARD WHITE shadow, 1px down,
+   zero blur. On cream paper that is a letterpress emboss and it is right. On
+   the dark theme it paints a white ghost one pixel under every glyph, which
+   reads as a doubled edge — worst on G and J, the letters with the most curve.
+   ★★ Same class as the .abtn white-background bug: a hard-coded #fff the dark
+   theme never overrode. Size was never the problem; the second copy was. */
+:root[data-theme="dark"] .brand{text-shadow:none}
 :root[data-theme="dark"] .theme-toggle .theme-sun{display:none}
 :root[data-theme="dark"] .theme-toggle .theme-moon{display:block}   /* dark shows the moon */
 :root[data-theme="dark"] .promptform input,
