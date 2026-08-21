@@ -1497,7 +1497,7 @@ header,#padtop,#libtop{min-height:58px}
   <button class="drow" type="button" data-nav="library"><b>Library</b><span>Every jot, searchable</span></button>
   <button class="drow" type="button" data-nav="patterns"><b>Patterns</b><span>When and what</span></button>
   <button class="drow" type="button" data-nav="account"><b>Account</b><span id="dAcctSub">Sync and data</span></button>
-  <button class="drow" type="button" data-nav="demo" id="dDemo"><b>Demo</b><span>John Doe, five years</span></button>
+  <button class="drow" type="button" data-nav="demo" id="dDemo"><b>Demo</b><span>Jot Doe, five years</span></button>
   <div class="dfoot">
     <div class="dwho" id="dWho"></div>
     <!-- ★ the ONE sanctioned appearance of his name in this app (his ask, 8/20).
@@ -2777,7 +2777,7 @@ function openDrawer(){
   acct.textContent = auth.signedIn ? "Sync and data" : "Sign in · sync and data";
   demoRow.classList.toggle("danger", demoActive());
   demoRow.querySelector("b").textContent = demoActive() ? "Exit demo" : "Demo";
-  demoRow.querySelector("span").textContent = demoActive() ? "Return to your local jots" : "John Doe, five years";
+  demoRow.querySelector("span").textContent = demoActive() ? "Return to your local jots" : "Jot Doe, five years";
   drawer.querySelectorAll(".drow").forEach(r => r.classList.remove("here"));
   const here = lib.classList.contains("on") ? null : "write";
   if (here) drawer.querySelector('[data-nav="' + here + '"]').classList.add("here");
@@ -3047,7 +3047,7 @@ function renderLib(){
   const all = viewJots(s.jots).slice().sort((a,b) => newestTs(b).localeCompare(newestTs(a)));
   const w = all.reduce((a,j) => a + words(j), 0);
   libBody.innerHTML = "";
-  libHeading(demoActive() ? "JOHN DOE · DEMO" : "LIBRARY");
+  libHeading(demoActive() ? "JOT DOE · DEMO" : "LIBRARY");
 
   /* LIBRARY_ACCORDION_START
      ★ Slimmed in the 8/20 redesign: the library is for READING. Account,
@@ -3059,7 +3059,7 @@ function renderLib(){
   if (demoActive()){
     const profile = createLibrarySection("Profile", "FICTIONAL · READ ONLY", "profile");
     const card = document.createElement("div"); card.className = "demo-profile";
-    card.innerHTML = '<b>John Doe</b><span>Born Jan 1, 2001 · Grew up in New Jersey</span><span>5 years · Aug 5, 2021 to Aug 4, 2026</span>';
+    card.innerHTML = '<b>Jot Doe</b><span>Born Jan 1, 2001 · Grew up in New Jersey</span><span>5 years · Aug 5, 2021 to Aug 4, 2026</span>';
     const note = document.createElement("div"); note.className = "demo-note";
     note.textContent = "Fictional demo. Search, filters, reading, and Patterns work; writing and data changes are off.";
     const exit = document.createElement("button"); exit.className = "mrow danger";   /* red: it leaves the demo (ruled 8/20) */
@@ -3553,7 +3553,7 @@ function suggest(j){
 function renderStats(){
   const all = viewJots(load().jots);
   libBody.innerHTML = "";
-  libHeading(demoActive() ? "JOHN DOE · PATTERNS" : "PATTERNS");
+  libHeading(demoActive() ? "JOT DOE · PATTERNS" : "PATTERNS");
 
   const back = document.createElement("button");
   back.className = "mrow"; back.style.marginBottom = "10px";
@@ -4363,7 +4363,7 @@ async function startDemo(){
     promptEditMode = false; promptAddMode = false; pendingHidePrompt = null;
     resetLibraryView();
     lib.classList.add("on"); renderLib();
-    return { ok:"John Doe demo loaded." };
+    return { ok:"Jot Doe demo loaded." };
   } catch (error){
     DEMO_STORE = null;
     return { error:error?.message || "The demo could not be loaded." };
@@ -4441,7 +4441,7 @@ function openAccount(entry){
   demoBtn.className = demoActive() ? "mrow danger" : "mrow go";
   demoBtn.innerHTML = demoActive()
     ? '<span>Exit demo</span><span class="sub">RETURN TO YOUR LOCAL JOTS</span>'
-    : '<span>Demo</span><span class="sub">EXPLORE JOHN DOE, AGE 25</span>';
+    : '<span>Demo</span><span class="sub">EXPLORE JOT DOE</span>';
   demoBtn.onclick = async () => {
     if (demoActive()){ exitDemo(true); return; }
     demoBtn.disabled = true;
