@@ -4475,8 +4475,24 @@ function exitDemo(stayInLibrary=true){
 
 async function entryGate(){
   await sbEnsureFresh();                 /* silent: keeps him signed in */
+
+  /* ★★★ WRITE IS THE FIRST PAGE. RULED 2026-08-22: "when someone opens
+     Midnight Jot I want the WRITE to be the first page."
+     The app opens on the pad. Always. Signed in, signed out, first visit or
+     thousandth - the first thing anyone sees is somewhere to write.
+     ⚠ The account page is NOT gone; it is one tap away in the drawer. What
+     changed is that it no longer stands in front of the thing the app is for.
+     A journalling app that opens on a sign-in form has asked for something
+     before it has given anything. */
+  return;
+
+  /* --- unreachable, kept deliberately ---------------------------------------
+     The old entry gate. Restoring it is deleting the `return` above, nothing
+     else. Left in place because the 8/20 design (the account page AS the start
+     screen) may come back as a first-run-only screen rather than an
+     every-open one. */
   if (auth.signedIn) return;             /* signed in -> straight to writing */
-  if (localStorage.getItem(GATEKEY)) return;   /* <-- DELETE THIS LINE for a hard wall */
+  if (localStorage.getItem(GATEKEY)) return;
   /* ★★ THE START SCREEN IS THE ACCOUNT PAGE (his idea, 8/20: "we remove
      start screen... account screen will replace start screen"). One auth
      surface instead of two that drift, and the library shell brings the
