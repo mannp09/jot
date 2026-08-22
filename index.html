@@ -4203,6 +4203,44 @@ async function _syncRun(){
       if (page.length) since = page[page.length - 1].updated_at;
     } while (page.length === 1000);
 
+    /* !!! RECONCILE BY IDENTITY, NOT BY CLOCK. Earned 2026-08-21.
+       The cursor above is one-directional: it asks for updated_at > since,
+       advances, and NEVER LOOKS BACK. Any row that ends up behind the cursor
+       -- clock skew between devices, a push that landed while a pull was in
+       flight, a server-side edit older than the last sync -- is invisible
+       forever, and nothing in the app can tell. That night his library showed
+       65 jots while the server held 82; SEVEN OF THAT DAY'S OWN JOTS were
+       missing from the device he wrote them on. Rewinding the cursor by hand
+       recovered every one.
+       A cursor that cannot detect its own miss is not a sync, it is a hope.
+       So: after the incremental pull, ask the server for its ID LIST ONLY and
+       fetch anything this device does not have. Ids are tiny (82 rows is a
+       couple of KB), it runs every sync, and it is self-healing by
+       construction -- the gap closes on the next sync no matter how it opened. */
+    try {
+      const idr = await sbRest("GET", "jot?select=jot_id&deleted_at=is.null&limit=10000");
+      if (!idr.error) {
+        const have = {};
+        (load().jots || []).forEach(function(j){ have[j.jot_id] = 1; });
+        (pulled || []).forEach(function(j){ have[j.jot_id] = 1; });
+        /* never resurrect what he deleted - the graveyard outranks the server */
+        (typeof graveyard === "function" ? graveyard() : []).forEach(function(id){ have[id] = 1; });
+        ((meta.tomb) || []).forEach(function(t){ have[t.jot_id] = 1; });
+        const missing = (idr.data || []).map(function(r){ return r.jot_id; })
+                                        .filter(function(id){ return !have[id]; });
+        if (missing.length) {
+          /* chunked so a long id list cannot blow the URL length */
+          for (let i = 0; i < missing.length; i += 50) {
+            const chunk = missing.slice(i, i + 50);
+            const inList = chunk.map(function(id){ return '"' + id + '"'; }).join(",");
+            const mr = await sbRest("GET", "jot?select=*&jot_id=in.(" + sEnc(inList) + ")");
+            if (!mr.error && mr.data) pulled = pulled.concat(mr.data);
+          }
+          console.log("[sync] reconcile recovered " + missing.length + " jot(s) the cursor had skipped");
+        }
+      }
+    } catch (e) { /* reconcile is a safety net; never let it break a working sync */ }
+
     const hashes = syncHashes.get();
     const st = load();
     const localBy = {};
@@ -4314,10 +4352,29 @@ function syncSchedule(ms){
   clearTimeout(_syncTimer);
   _syncTimer = setTimeout(function(){ syncFlush(); }, ms === undefined ? 4000 : ms);
 }
+/* !!! THE GRAVEYARD. Earned 2026-08-21, alongside the identity reconcile.
+   meta.tomb is a QUEUE - it drains once the server accepts the tombstone, and
+   is then empty. That was fine while the pull could only move forward. It is
+   NOT fine now that the pull reconciles by identity: a jot deleted here whose
+   tombstone never reached the server (offline at the time, signed out, a
+   refused write) would be seen as "on the server, missing locally" and
+   RESURRECTED on the next sync. Ten one-word test jots from 8/20 are in exactly
+   that state - deleted in the app, still deleted_at NULL on the server.
+   So the queue drains and the GRAVEYARD DOES NOT. It is the permanent local
+   record of "he deleted this", and the reconcile honours it forever. */
+function graveyard(){
+  try { return JSON.parse(localStorage.getItem("jot.deleted") || "[]"); }
+  catch (e) { return []; }
+}
+function graveyardAdd(id){
+  const g = graveyard();
+  if (g.indexOf(id) < 0) { g.push(id); localStorage.setItem("jot.deleted", JSON.stringify(g)); }
+}
 function syncTombstone(id){
   const meta = syncMeta.get();
   (meta.tomb = meta.tomb || []).push({ jot_id: id, deleted_at: iso(new Date()) });
   syncMeta.set(meta);
+  graveyardAdd(id);                 /* permanent, survives the queue draining */
   const h = syncHashes.get(); delete h[id]; syncHashes.set(h);
   syncSchedule(1000);
 }
