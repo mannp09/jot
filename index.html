@@ -304,7 +304,11 @@ header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
 #drawer{position:fixed;top:0;bottom:0;left:0;z-index:400;
   width:min(78vw,300px);display:flex;flex-direction:column;gap:4px;
   background:var(--tint,var(--paper));border-right:1.5px solid var(--rule);
-  padding:18px 14px calc(14px + env(safe-area-inset-bottom));
+  /* ⚠ top inset, not a flat 18px. Installed to the home screen the web view
+     runs under the status bar (black-translucent), so the first row sat beneath
+     the clock - his catch 8/28. Safari hides it because the browser chrome
+     pushes the page down. #app and #lib already do exactly this. */
+  padding:max(env(safe-area-inset-top),18px) 14px calc(14px + env(safe-area-inset-bottom));
   transform:translateX(-102%);transition:transform .24s var(--ease-out-4);
   overflow-y:auto;overscroll-behavior:contain}
 #drawer.on{transform:none;box-shadow:var(--atelier-shadow-up,0 10px 40px rgb(0 0 0 / .25))}
