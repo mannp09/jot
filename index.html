@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-build="v101">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
@@ -24,6 +24,28 @@
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Midnight Jot</title>
+<script>
+/* IOS_KB_PURE_START */
+const IOS_KB_ALLOWED = new Set([
+  "noinput", "noobservers", "noenter", "nocompose",
+  "noscroll", "noanimation", "nobidi"
+]);
+function parseIosKbFlags(search){
+  const raw = new URLSearchParams(search || "").getAll("ioskb")
+    .flatMap(value => value.split(","))
+    .map(value => value.trim().toLowerCase())
+    .filter(value => IOS_KB_ALLOWED.has(value));
+  return new Set(raw);
+}
+/* IOS_KB_PURE_END */
+const IOS_KB_FLAGS = parseIosKbFlags(location.search);
+function iosKbHas(flag){ return IOS_KB_FLAGS.has(flag); }
+(function applyIosKbFlags(){
+  const root = document.documentElement;
+  for (const flag of IOS_KB_FLAGS) root.classList.add("ioskb-" + flag);
+  window.JotIosKb = { flags:IOS_KB_FLAGS, has:iosKbHas };
+})();
+</script>
 <script>
 /* THEME_PURE_START */
 const THEME_KEY = "jot.theme";
@@ -278,6 +300,15 @@ header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
 #lines:empty::before,.row.ph::before{}
 #lines{outline:none;caret-color:var(--accent)}
 #lines .row.ph{color:var(--muted)}
+.ioskb-badge{flex:0 0 auto;margin:7px 0 0;padding:5px 8px;border:1px solid var(--accent);
+  border-radius:7px;color:var(--accent);background:var(--card);
+  font-size:var(--f0);font-weight:700;letter-spacing:var(--tr-label);text-transform:uppercase}
+html.ioskb-noscroll #pad{overflow-y:auto;overscroll-behavior:contain}
+html.ioskb-noscroll #lines{flex:0 0 auto;min-height:100%;overflow:visible;
+  touch-action:auto;-webkit-overflow-scrolling:auto}
+html.ioskb-noscroll .scrollrail{display:none}
+html.ioskb-noanimation #app{animation:none!important;transform:none!important}
+html.ioskb-nobidi #lines{unicode-bidi:normal!important}
 
 /* ---------- library ---------- */
 #lib{position:fixed;inset:0;background:var(--paper);z-index:20;
@@ -1531,6 +1562,7 @@ header,#padtop,#libtop{min-height:58px}
       <div id="padq"><div class="pcat" id="pcat"></div><div class="pq" id="pq"></div></div>
       <button class="iconbtn" id="done" aria-label="Save this jot">DONE</button>
     </div>
+    <div class="ioskb-badge" id="ioskbBadge" role="status" hidden></div>
     <!-- autocorrect="on" opts in explicitly; WebKit's contenteditable default
          is not guaranteed to match its <input> default. autocapitalize is
          deliberately ABSENT - no value means "defer to the keyboard", and
@@ -1899,6 +1931,13 @@ function vector(j){
 }
 
 const $ = s => document.querySelector(s);
+if (IOS_KB_FLAGS.size){
+  const badge = $("#ioskbBadge");
+  badge.hidden = false;
+  badge.textContent = "IOS KEYBOARD TEST · "
+    + [...IOS_KB_FLAGS].join(" + ").toUpperCase()
+    + " · BUILD " + document.documentElement.dataset.build;
+}
 $("#done").innerHTML = I.check;
 $("#jumpFirst").innerHTML = I["chevron-down"];
 $("#jumpLatest").innerHTML = I["chevron-down"];
@@ -2535,27 +2574,46 @@ function mkRow(text, ts, jid){
   return d;
 }
 
+/* Read the editor without changing it. Diagnostic noinput/noenter modes must
+   still preserve every visible character when iOS backgrounds or closes the
+   page, including native nodes the normal reconciler has deliberately left
+   alone. Unknown native nodes receive the measured snapshot time; their text
+   is never discarded merely because they lack Jot metadata. */
+function snapshotRowsFromDom(){
+  const measuredAt = iso(new Date());
+  return [...lines.childNodes]
+    .map(node => {
+      if (node.nodeType !== 1 && node.nodeType !== 3) return null;
+      const text = (node.textContent || "").replace(/\u00a0/g, " ");
+      if (!text.trim()) return null;
+      const row = node.nodeType === 1 && node.classList.contains("row") ? node : null;
+      return {
+        ts: row && row.dataset.ts ? row.dataset.ts : measuredAt,
+        text,
+        source:"typed",
+        jid: row && row.dataset.jid ? row.dataset.jid : null
+      };
+    })
+    .filter(Boolean);
+}
+
 /* the DOM is the truth; live.paragraphs is derived from it on every keystroke */
 function syncFromDom(){
   if (!live) return;
-  const rows = [...lines.querySelectorAll(".row")];
   /* \u2605\u2605\u2605 PROVENANCE, added 2026-08-15 after he caught a jot he never wrote.
      `source:"typed"` is stamped HERE and only here - inside the DOM sync that
      can only run because a keystroke landed in the pad. Nothing written any
      other way can claim it. \u26a0 Absence of the field means UNKNOWN, not false:
      every paragraph captured before today has no source and must never be
      rendered as verified. */
-  live.paragraphs = rows
-    .map(r => ({ ts: r.dataset.ts, text: r.textContent.replace(/\u00a0/g, " "),
-                 source: "typed", jid: r.dataset.jid || null }))
-    .filter(p => p.text.trim());
+  live.paragraphs = snapshotRowsFromDom();
   saveDraft();
 }
 
 /* ⚠ Chrome's default Enter inside contenteditable makes a bare div with no
    stamp. Intercepting is not a preference: an unstamped paragraph is a
    paragraph this app cannot measure. */
-lines.addEventListener("keydown", e => {
+function handlePadEnter(e){
   if (e.key !== "Enter" || e.shiftKey) return;
   /* predictive text, swipe typing and every IME use Enter to COMMIT the
      candidate word. Swallowing it there splits the line mid-word instead. */
@@ -2576,9 +2634,10 @@ lines.addEventListener("keydown", e => {
   sel.removeAllRanges(); sel.addRange(r);
   next.scrollIntoView({block:"nearest"});
   syncFromDom();
-});
+}
+if (!iosKbHas("noenter")) lines.addEventListener("keydown", handlePadEnter);
 
-lines.addEventListener("input", () => {
+function reconcileInput(){
   /* a paste or a delete can leave bare divs or text nodes; re-home them */
   [...lines.childNodes].forEach(n => {
     if (n.nodeType === 3 && n.textContent.trim()){
@@ -2589,7 +2648,8 @@ lines.addEventListener("input", () => {
   });
   if (!lines.querySelector(".row")) lines.append(mkRow("", new Date()));
   syncFromDom();
-});
+}
+if (!iosKbHas("noinput")) lines.addEventListener("input", reconcileInput);
 
 /* ★ paste arrives as plain text, always. A pasted <b> or a colour from another
    app would be the one thing that makes this stop looking like paper. */
@@ -2717,9 +2777,15 @@ function openPad(cat, cardEl, immediate){
    ⚠ Only works because #lines carries a tall bottom padding - without it the
    last row cannot be scrolled any higher than the bottom of the box. */
 function composeToTop(){
+  if (iosKbHas("nocompose")) return;
   const rows = [...lines.querySelectorAll(".row")];
   const last = rows[rows.length - 1];
   if (!last) return;
+  if (iosKbHas("noscroll")){
+    const pad = $("#pad");
+    pad.scrollTop = Math.max(0, last.offsetTop - 6);
+    return;
+  }
   /* #app now has a definite viewport height, so #lines owns the normal scroll
      range on touch and desktop. Keep the fallback for older engines that may
      still size a contenteditable flex child against its content. */
@@ -2743,7 +2809,7 @@ function composeToTop(){
   const hide = () => bar.classList.remove("up");
 
   lines.addEventListener("click", () => bar.classList.toggle("up"));
-  lines.addEventListener("keydown", hide);
+  if (!iosKbHas("noinput")) lines.addEventListener("keydown", hide);
   lines.addEventListener("scroll", hide, { passive: true });
 
   $("#pbTop").addEventListener("click", e => {
@@ -2783,12 +2849,14 @@ function composeToTop(){
   first.addEventListener("click", () => lines.scrollTo({ top:0, behavior:"smooth" }));
   latest.addEventListener("click", () => composeToTop());
   lines.addEventListener("scroll", refresh, { passive:true });
-  lines.addEventListener("input", refresh);
+  if (!iosKbHas("noinput")) lines.addEventListener("input", refresh);
   window.addEventListener("resize", refresh, { passive:true });
-  new MutationObserver(refresh).observe(lines, {
-    childList:true,subtree:true,characterData:true
-  });
-  if ("ResizeObserver" in window) new ResizeObserver(refresh).observe(lines);
+  if (!iosKbHas("noobservers")) {
+    new MutationObserver(refresh).observe(lines, {
+      childList:true,subtree:true,characterData:true
+    });
+    if ("ResizeObserver" in window) new ResizeObserver(refresh).observe(lines);
+  }
   requestAnimationFrame(refresh);
 })();
 
@@ -2868,6 +2936,11 @@ const saveDraft = (now) => {
     at: iso(new Date())
   }));
 };
+function flushDraftFromDom(){
+  if (!live) return;
+  live.paragraphs = snapshotRowsFromDom();
+  saveDraft(true);
+}
 const clearDraft = () => localStorage.removeItem(DRAFT);
 const readDraft = cat => {
   try {
@@ -2875,8 +2948,8 @@ const readDraft = cat => {
     return d && d.cat === cat ? d : null;
   } catch { return null; }
 };
-window.addEventListener("beforeunload", () => saveDraft(true));
-document.addEventListener("visibilitychange", () => { if (document.hidden) saveDraft(true); });
+window.addEventListener("beforeunload", flushDraftFromDom);
+document.addEventListener("visibilitychange", () => { if (document.hidden) flushDraftFromDom(); });
 
 $("#done").addEventListener("click", saveAndHome);
 
