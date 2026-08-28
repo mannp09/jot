@@ -349,6 +349,16 @@ header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
 .drow.here{background:var(--card);border-color:var(--rule)}
 .drow.danger b{color:#B3342A}
 :root[data-theme="dark"] .drow.danger b{color:#D24A3E}
+/* the demo-active badge. colour comes from .drow.danger b via inherit, so this
+   needs no theme rule of its own and no hardcoded hex. the dot is a box, not a
+   character, so screen readers never announce it. */
+.drow .dbadge{color:inherit;background:color-mix(in srgb,currentColor 12%,transparent);
+  border-radius:999px;padding:1px 6px;margin-left:6px;display:inline-flex;
+  align-items:center;gap:4px;vertical-align:middle}
+.drow .dbadge::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor}
+/* ⚠ display:inline-flex above outranks the UA sheet's [hidden]{display:none},
+   so the badge needs its own hide rule or it is on permanently. */
+.drow .dbadge[hidden]{display:none}
 @media (hover:hover){
   .drow:hover{background:color-mix(in srgb,var(--accent) 12%,transparent)}
 }
@@ -1156,26 +1166,11 @@ body::before{
    row-gap is the only vertical space between Account, Options and Data -
    no per-section margins to drift apart. */
 .acct{padding:6px 2px;display:flex;flex-direction:column;gap:9px}
-/* the entry tagline wears ACCOUNT's exact type (same inherited font, same 2px
-   inset) in the accent - sentence case, not caps (his spec, 8/20) */
-.entrysub{padding:8px 2px 0;color:var(--accent)}
 .acctwrap{display:grid;gap:18px 32px}
-/* ★ THE THREE SECTIONS AS ONE PAGE (his call 8/22: "the three sections of
-   account option that don't feel continuous"). A plain 1fr 1fr left the third
-   section orphaned on its own row - 213px of dead space beside ACCOUNT and the
-   whole bottom-right cell empty, 451px of blank column. ACCOUNT now holds the
-   left column across both rows while OPTIONS and DATA stack on the right, so
-   the two columns come out 372px against 397px and nothing is orphaned.
-   ⚠ NOT a full-width ACCOUNT span: .ain carries no max-width, so spanning
-   would stretch the email and password fields to ~1075px.
-   ⚠ Placement only - the grid row-gap is still the ONLY vertical space between
-   the three, per his 8/20 fix. No per-section margins. */
-@media (min-width:760px){
-  .acctwrap{grid-template-columns:1fr 1fr;align-items:start}
-  .acctwrap > :nth-child(1){grid-column:1;grid-row:1 / span 2}
-  .acctwrap > :nth-child(2){grid-column:2;grid-row:1}
-  .acctwrap > :nth-child(3){grid-column:2;grid-row:2}
-}
+/* one card per page since DATA left (8/28). capped rather than full-width:
+   .ain carries no max-width, so a wide grid stretches the email and password
+   fields across the whole sheet. */
+@media (min-width:760px){ .acctwrap{max-width:460px} }
 .acct .who{font-weight:800;font-size:15px}
 .acct .note{font-size:12.5px;color:var(--muted);line-height:1.45}
 /* ⚠ was background:#fff with color:var(--ink) - in dark mode that is cream
@@ -1524,7 +1519,12 @@ header,#padtop,#libtop{min-height:58px}
       <div id="padq"><div class="pcat" id="pcat"></div><div class="pq" id="pq"></div></div>
       <button class="iconbtn" id="done" aria-label="Save this jot">DONE</button>
     </div>
-    <div id="lines" contenteditable="true" spellcheck="true"
+    <!-- autocorrect="on" opts in explicitly; WebKit's contenteditable default
+         is not guaranteed to match its <input> default. autocapitalize is
+         deliberately ABSENT - no value means "defer to the keyboard", and
+         "sentences" would force a capital onto fragment answers that are
+         legitimately lowercase (ruled 8/28). -->
+    <div id="lines" contenteditable="true" spellcheck="true" autocorrect="on"
          role="textbox" aria-multiline="true" aria-label="Jot text"></div>
     <nav class="scrollrail" id="scrollrail" aria-label="Move through this jot">
       <button type="button" id="jumpFirst" aria-label="Go to first jot"></button>
@@ -1559,11 +1559,14 @@ header,#padtop,#libtop{min-height:58px}
 <div id="scrim" hidden></div>
 <nav id="drawer" aria-label="Areas" aria-hidden="true">
   <!-- no wordmark here (ruled 8/20): the header already carries it -->
-  <button class="drow" type="button" data-nav="write"><b>Write</b><span>The questions</span></button>
+  <!-- label is "Jot" (ruled 8/28); data-nav stays "write" - the token is never
+       rendered and renaming it would touch five sites for no user benefit. -->
+  <button class="drow" type="button" data-nav="write"><b>Jot</b><span>The questions</span></button>
   <button class="drow" type="button" data-nav="library"><b>Library</b><span>Every jot, searchable</span></button>
   <button class="drow" type="button" data-nav="patterns"><b>Patterns</b><span>When and what</span></button>
-  <button class="drow" type="button" data-nav="account"><b>Account</b><span id="dAcctSub">Sync and data</span></button>
-  <button class="drow" type="button" data-nav="demo" id="dDemo"><b>Demo</b><span>Jot Doe, five years</span></button>
+  <button class="drow" type="button" data-nav="account"><b>Account</b><span id="dAcctSub">Sign in · sync</span></button>
+  <button class="drow" type="button" data-nav="data"><b>Data</b><span>Import and export</span></button>
+  <button class="drow" type="button" data-nav="demo" id="dDemo"><b>Demo <span class="dbadge" hidden>Active</span></b><span>Jot Doe, five years</span></button>
   <div class="dfoot">
     <div class="dwho" id="dWho"></div>
     <!-- ★ the ONE sanctioned appearance of his name in this app (his ask, 8/20).
@@ -1747,6 +1750,19 @@ let STORE_LOCKED = null;      /* non-null = a reason writes are refused */
 let _storeCache = null, STORE_GEN = 0;
 let DEMO_STORE = null;
 const demoActive = () => !!DEMO_STORE;
+
+/* Trash empties itself after TRASH_DAYS. THIS is where the deletion becomes a
+   fact: the tombstone goes out here, not at the tap, so the other device only
+   ever hears about deletions he did not undo. */
+function purgeTrash(){
+  const st = _loadRaw();
+  const cut = Date.now() - TRASH_DAYS * 864e5;
+  const gone = st.jots.filter(j => j.trashed_at && Date.parse(j.trashed_at) < cut);
+  if (!gone.length) return;
+  st.jots = st.jots.filter(j => !gone.includes(j));
+  gone.forEach(j => { if (typeof syncTombstone === "function") syncTombstone(j.jot_id); });
+  save(st);
+}
 
 const load = () => {
   if (demoActive()) return DEMO_STORE;
@@ -2104,7 +2120,10 @@ const SHOW_IMPORTED = "jot.showImported";
 const isImported  = j => typeof j?.source === "string" && j.source.startsWith("import:journal");
 const showImported = () => localStorage.getItem(SHOW_IMPORTED) === "1";
 const ownJots     = a => a.filter(j => !isImported(j));
-const viewJots    = a => showImported() ? a : ownJots(a);
+const trashed     = j => !!j.trashed_at;
+const liveJots    = a => a.filter(j => !trashed(j));
+const viewJots    = a => liveJots(showImported() ? a : ownJots(a));
+const TRASH_DAYS  = 30;
 
 const NAMING = "jot.naming";
 const ROTATE_MS = 3 * 60 * 1000;
@@ -2222,6 +2241,7 @@ function renderPromptForm(){
 }
 
 function renderHome(){
+  paintNav("write");
   pad.classList.remove("on"); home.style.display="flex"; live=null;
   home.innerHTML = "";
   /* ★ 8/20 layout ruling: the questions start right under the header and
@@ -2487,7 +2507,10 @@ function mkRow(text, ts, jid){
      existing line on reopen would save it as a new record and quietly
      duplicate his history - the exact failure the upsert exists to prevent. */
   if (jid) d.dataset.jid = jid;
-  d.textContent = text || "";
+  /* always a real text node, even when empty. textContent = "" leaves the div
+     with no children, and a caret placed on an ELEMENT gives iOS no text
+     context - which is where autocorrect and autocapitalise read from. */
+  d.appendChild(document.createTextNode(text || ""));
   return d;
 }
 
@@ -2513,6 +2536,9 @@ function syncFromDom(){
    paragraph this app cannot measure. */
 lines.addEventListener("keydown", e => {
   if (e.key !== "Enter" || e.shiftKey) return;
+  /* predictive text, swipe typing and every IME use Enter to COMMIT the
+     candidate word. Swallowing it there splits the line mid-word instead. */
+  if (e.isComposing || e.keyCode === 229) return;
   e.preventDefault();
   const sel = window.getSelection();
   if (!sel.rangeCount) return;
@@ -2525,7 +2551,7 @@ lines.addEventListener("keydown", e => {
   next.classList.add("fresh");
   here.after(next);
   const r = document.createRange();
-  r.setStart(next.firstChild || next, 0); r.collapse(true);
+  r.setStart(next.firstChild, 0); r.collapse(true);
   sel.removeAllRanges(); sel.addRange(r);
   next.scrollIntoView({block:"nearest"});
   syncFromDom();
@@ -2837,16 +2863,38 @@ function openLib(){ lib.classList.add("on"); renderLib(); }
    take you to other areas." The library stops being the junk drawer: admin
    moved to Account, stats to Patterns, and the drawer is only navigation. */
 const drawer = $("#drawer"), scrim = $("#scrim");
-function openDrawer(){
-  const who = $("#dWho"), demoRow = $("#dDemo"), acct = $("#dAcctSub");
-  who.textContent = auth.signedIn ? (auth.email || "Signed in") : "Not signed in";
-  acct.textContent = auth.signedIn ? "Sync and data" : "Sign in · sync and data";
-  demoRow.classList.toggle("danger", demoActive());
-  demoRow.querySelector("b").textContent = demoActive() ? "Exit demo" : "Demo";
-  demoRow.querySelector("span").textContent = demoActive() ? "Return to your local jots" : "Jot Doe, five years";
+/* the menu highlight. RULED 8/28: before this, .here was written only by click
+   handlers, so every other way into a view - the ALL JOTS back button, the
+   wordmark, Escape, leaving the demo - left the menu pointing at the wrong row.
+   Views paint it now; clicks do not. */
+let currentView = "write";
+const NAV_OF = {write:"write", library:"library", patterns:"patterns",
+                account:"account", data:"data", reader:"library"};
+function paintNav(view){
+  if (view) currentView = view;
   drawer.querySelectorAll(".drow").forEach(r => r.classList.remove("here"));
-  const here = lib.classList.contains("on") ? null : "write";
-  if (here) drawer.querySelector('[data-nav="' + here + '"]').classList.add("here");
+  const row = drawer.querySelector('[data-nav="' + (NAV_OF[currentView] || "write") + '"]');
+  if (row) row.classList.add("here");
+}
+/* the demo row keeps its NAME - each row is a place, and places do not rename
+   themselves. State shows as a badge instead (his call 8/28). Repainted on
+   every state change; before this it only ran on drawer-open, so on desktop
+   the row stayed stale for the whole session. */
+function paintDemoRow(){
+  const row = $("#dDemo"), on = demoActive();
+  row.classList.toggle("danger", on);
+  row.dataset.demo = on ? "on" : "off";
+  row.querySelector(".dbadge").hidden = !on;
+  /* :scope > span - the badge is also a span, nested inside <b>, and a bare
+     querySelector("span") would grab it instead of the sub-label. */
+  row.querySelector(":scope > span").textContent =
+    on ? "Return to your local jots" : "Jot Doe, five years";
+}
+function openDrawer(){
+  const who = $("#dWho"), acct = $("#dAcctSub");
+  who.textContent = auth.signedIn ? (auth.email || "Signed in") : "Not signed in";
+  acct.textContent = auth.signedIn ? "Email and sync" : "Sign in · sync";
+  paintDemoRow(); paintNav();
   scrim.hidden = false;
   /* ⚠ synchronous, with a forced reflow for the transition - the old
      requestAnimationFrame version simply never fired in a backgrounded tab,
@@ -2868,10 +2916,24 @@ function toggleDrawer(){
 }
 const drawerIsModal = () => matchMedia("(max-width:759px)").matches;
 function goWrite(){
+  /* the ONE way back to the pad, and the one exit from the demo (ruled 8/28).
+     it calls no render - #home is already painted underneath - so the nav
+     paint has to happen here or four routes stay stale. */
   if (demoActive()) exitDemo(false);
   lib.classList.remove("on");
+  paintDemoRow(); paintNav("write");
 }
 scrim.addEventListener("click", closeDrawer);
+/* desktop keys. both are no-ops while he is typing - the pad, any input and any
+   contenteditable own their own keystrokes. */
+document.addEventListener("keydown", e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const t = e.target;
+  if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+  if (e.key === "/"){ e.preventDefault(); openLib(); lib.classList.add("on");
+    const q = document.querySelector("#libSearch,#lsearch,input[type=search]"); if (q) q.focus(); return; }
+  if (e.key === "n" || e.key === "N"){ e.preventDefault(); goWrite(); }
+});
 document.addEventListener("keydown", e => {
   if (e.key !== "Escape") return;
   if (drawer.classList.contains("on")) closeDrawer();
@@ -2884,19 +2946,19 @@ drawer.addEventListener("click", async e => {
   /* mobile: the drawer is modal and yields the screen. desktop: it is a dock
      and STAYS - both screens at once (ruled 8/20). */
   if (drawerIsModal()) closeDrawer();
-  drawer.querySelectorAll(".drow").forEach(r => r.classList.remove("here"));
-  row.classList.add("here");
-  if (nav === "write"){
-    /* leaving the entry surface by any door stamps the seen-flag */
-    localStorage.setItem(GATEKEY, "1");
-    goWrite();
-  }
+  /* the view being opened paints the highlight, not this click - see paintNav */
+  if (nav === "write") goWrite();
   if (nav === "library"){ openLib(); }
   if (nav === "patterns"){ lib.classList.add("on"); renderStats(); }
   if (nav === "account"){ lib.classList.add("on"); openAccount(); }
+  if (nav === "data"){ lib.classList.add("on"); renderData(); }
   if (nav === "demo"){
-    if (demoActive()){ exitDemo(true); return; }
+    /* read the PAINTED state, not demoActive(): a second click arriving before
+       the repaint would otherwise exit a demo he just started. */
+    if (row.dataset.demo === "on"){ goWrite(); return; }
+    row.disabled = true;
     const r = await startDemo();
+    row.disabled = false;
     if (r.error) alert(r.error);
   }
 });
@@ -3098,7 +3160,18 @@ function libHeading(text){
   libBody.appendChild(h);
 }
 
+/* one exit-demo button, two homes (Library profile card and Patterns). It
+   always goes to the pad: ruled 8/28, "take the user to the write tab". */
+function mkExitDemoRow(){
+  const b = document.createElement("button");
+  b.className = "mrow danger";   /* red: it leaves the demo (ruled 8/20) */
+  b.innerHTML = '<span>Exit demo</span><span class="sub">RETURN TO YOUR LOCAL JOTS</span>';
+  b.onclick = goWrite;
+  return b;
+}
+
 function renderLib(){
+  paintNav("library");
   const s = load();
   /* ★★ SORT ON THE NEWEST ENTRY, NOT ON WHEN THE JOT WAS OPENED. His report
      2026-08-15: "loose does just have 10:17 - it needs to updated to show
@@ -3128,10 +3201,7 @@ function renderLib(){
     card.innerHTML = '<b>Jot Doe</b><span>Born Jan 1, 2001 · Grew up in New Jersey</span><span>5 years · Aug 5, 2021 to Aug 4, 2026</span>';
     const note = document.createElement("div"); note.className = "demo-note";
     note.textContent = "Fictional demo. Search, filters, reading, and Patterns work; writing and data changes are off.";
-    const exit = document.createElement("button"); exit.className = "mrow danger";   /* red: it leaves the demo (ruled 8/20) */
-    exit.innerHTML = '<span>Exit demo</span><span class="sub">RETURN TO YOUR LOCAL JOTS</span>';
-    exit.onclick = () => exitDemo(true);
-    profile.panel.append(card, note, exit);
+    profile.panel.append(card, note, mkExitDemoRow());
     stack.appendChild(profile.details);
   }
 
@@ -3617,6 +3687,7 @@ function suggest(j){
    distribution, re-experiencing wants "the longest I went without writing" -
    so it is safe to build while that question is still his to answer. */
 function renderStats(){
+  paintNav("patterns");
   const all = viewJots(load().jots);
   libBody.innerHTML = "";
   libHeading(demoActive() ? "JOT DOE · PATTERNS" : "PATTERNS");
@@ -3626,6 +3697,9 @@ function renderStats(){
   back.innerHTML = `<span>&#8592; &nbsp;All jots</span><span class="sub">${all.length} ${all.length===1?"JOT":"JOTS"}</span>`;
   back.onclick = renderLib;
   libBody.appendChild(back);
+  /* his ask 8/28: leave the demo without navigating away from Patterns first.
+     sits directly under All jots, and only while the demo is open. */
+  if (demoActive()) libBody.appendChild(mkExitDemoRow());
 
   if (!all.length){
     const e = document.createElement("div");
@@ -3715,6 +3789,7 @@ function renderStats(){
 }
 
 function renderJot(j){
+  paintNav("reader");
   const v = vector(j);
   libBody.innerHTML = "";
   libHeading((demoActive() ? "DEMO · " : "") + j.prompt_text.toUpperCase());
@@ -3765,14 +3840,14 @@ function renderJot(j){
 
 "${first}${first.length===60?"...":""}"
 
-${j.paragraphs.length} timestamped ${j.paragraphs.length===1?"entry":"entries"}. This cannot be undone.`)) return;
+${j.paragraphs.length} timestamped ${j.paragraphs.length===1?"entry":"entries"}. It moves to Trash for ${TRASH_DAYS} days.`)) return;
     const st = load();
-    st.jots = st.jots.filter(x => x.jot_id !== j.jot_id);
-    /* ⚠ a hard delete cannot sync - the other device cannot tell "deleted"
-       from "not yet seen" and would resurrect it. The tombstone carries the
-       FACT of the deletion the same way a jot carries the fact of a thought.
-       Recorded even signed out, so a later sign-in still carries it. */
-    if (typeof syncTombstone === "function") syncTombstone(j.jot_id);
+    /* ★ SOFT delete (8/28). The jots are the one thing here that cannot be
+       replaced, and a mis-tap used to destroy one permanently.
+       ⚠ NO tombstone yet - a tombstone is the FACT of a deletion, and this one
+       is still reversible. It is written when Trash empties, in purgeTrash(). */
+    const t = st.jots.find(x => x.jot_id === j.jot_id);
+    if (t) t.trashed_at = new Date().toISOString();
     save(st); renderLib();
   };
 
@@ -4187,7 +4262,16 @@ async function sbRest(method, pathq, body, prefer){
 }
 
 let SYNC_STATE = { running: false, line: "Never synced from this device.", last: null };
-function syncStatusLine(){ return SYNC_STATE.line; }
+/* sync runs on 10 and 20 minute timers and never said when it last worked.
+   trust in sync is trust in the app, so the line carries the age. */
+function syncStatusLine(){
+  const t = SYNC_STATE.last || (typeof syncMeta === "object" && syncMeta.get().last_ok);
+  if (SYNC_STATE.running || !t) return SYNC_STATE.line;
+  const m = Math.max(0, Math.round((Date.now() - Date.parse(t)) / 60000));
+  const ago = m < 1 ? "just now" : m < 60 ? m + "m ago"
+            : m < 1440 ? Math.round(m/60) + "h ago" : Math.round(m/1440) + "d ago";
+  return SYNC_STATE.line + "  ·  Synced " + ago;
+}
 const sEnc = encodeURIComponent;
 const inList = ids => 'in.(' + ids.map(x => '"' + String(x).replace(/"/g, "") + '"').join(",") + ')';
 
@@ -4436,19 +4520,6 @@ setInterval(function(){ syncSchedule(1); }, 10 * 60 * 1000);
   sbRefresh();   /* fills in the user object; failure keeps the hash session */
 })();
 
-/* ── THE ENTRY PROMPT ───────────────────────────────────────────────────────
-   His ask: "jot should prompt log in or sign up upon entry".
-
-   !! IT PROMPTS, IT DOES NOT GATE, and that difference is deliberate enough to
-   need saying. There is a "Not now" on this screen. Without it, opening jot
-   with no signal would mean no capture - and a capture tool that cannot
-   capture when the network is down has failed at the one moment it matters.
-   ONE line makes it a hard wall if he wants one; it is marked below.
-
-   ! Shown only when signed OUT and only ONCE per install. A prompt that
-   reappears every open is not a prompt, it is a nag, and he would learn to
-   dismiss it without reading. */
-const GATEKEY = "jot.gate.seen";
 
 function resetLibraryView(){
   libView.group = "day"; libView.cat = "all"; libView.part = "all"; libView.q = "";
@@ -4484,7 +4555,7 @@ async function startDemo(){
     if (localStorage.getItem(KEY) !== realBytes) throw new Error("Your local store changed while the demo loaded. Nothing was replaced.");
     DEMO_STORE = freezeDemo(payload);
     promptEditMode = false; promptAddMode = false; pendingHidePrompt = null;
-    resetLibraryView();
+    resetLibraryView(); paintDemoRow();
     lib.classList.add("on"); renderLib();
     return { ok:"Jot Doe demo loaded." };
   } catch (error){
@@ -4495,7 +4566,7 @@ async function startDemo(){
 
 function exitDemo(stayInLibrary=true){
   DEMO_STORE = null;
-  resetLibraryView();
+  resetLibraryView(); paintDemoRow();
   if (stayInLibrary){ lib.classList.add("on"); renderLib(); }
   else renderHome();
 }
@@ -4512,81 +4583,16 @@ async function entryGate(){
      A journalling app that opens on a sign-in form has asked for something
      before it has given anything. */
   return;
-
-  /* --- unreachable, kept deliberately ---------------------------------------
-     The old entry gate. Restoring it is deleting the `return` above, nothing
-     else. Left in place because the 8/20 design (the account page AS the start
-     screen) may come back as a first-run-only screen rather than an
-     every-open one. */
-  if (auth.signedIn) return;             /* signed in -> straight to writing */
-  if (localStorage.getItem(GATEKEY)) return;
-  /* ★★ THE START SCREEN IS THE ACCOUNT PAGE (his idea, 8/20: "we remove
-     start screen... account screen will replace start screen"). One auth
-     surface instead of two that drift, and the library shell brings the
-     mirrored header for free. Entry mode swaps BACK for the tagline and
-     stamps the seen-flag on whichever door he takes. */
-  lib.classList.add("on");
-  openAccount(true);
 }
 
-function openAccount(entry){
-  /* entry=true: this page IS the start screen (ruled 8/20) - tagline instead
-     of BACK, and every door out stamps the seen-flag. */
-  const seen = () => localStorage.setItem(GATEKEY, "1");
-  const signed = auth.signedIn;
-  const wrap = document.createElement("div");
-  wrap.className = "acct";
-  wrap.innerHTML =
-    '<div class="lab">ACCOUNT</div>' +
-    (signed
-      ? '<div class="who"></div>' +
-        '<div class="note" id="aSyncNote"></div>' +
-        '<button class="abtn pri" id="aSync">Sync now</button>' +
-        '<button class="abtn" id="aOut">Sign out</button>'
-      : '<div class="note">Midnight Jot works with or without an account, which allows users to sync jots between devices.</div>' +
-        '<input class="ain" id="aEmail" type="email" placeholder="Email" autocomplete="username">' +
-        '<input class="ain" id="aPw" type="password" placeholder="Password" autocomplete="current-password">' +
-        '<button class="abtn pri" id="aIn">Sign in</button>' +
-        '<button class="abtn" id="aUp">Create account</button>' +
-        '<button class="alink" id="aForgot">Forgot password</button>') +
-    '<div class="amsg" id="aMsg"></div>';
-
+/* DATA is its own area now (ruled 8/28). It left the account page, which was
+   three stacked cards in one scroll - the junk drawer reassembled in a new
+   location - and took a drawer row of its own. */
+function renderData(){
+  paintNav("data");
   libBody.innerHTML = "";
-  /* ★ ALWAYS the tagline, NEVER a back button (his ruling 8/20 x2: "i still
-     see back button") - the brand and the drawer are the ways out. */
-  const sub = document.createElement("div");
-  sub.className = "entrysub";
-  sub.textContent = "Moments are meant to be jotted.";
-  libBody.appendChild(sub);
-  const grid = document.createElement("div");
-  grid.className = "acctwrap";
+  const grid = document.createElement("div"); grid.className = "acctwrap";
   libBody.appendChild(grid);
-  grid.appendChild(wrap);
-
-  /* ── OPTIONS - the start screen's two non-auth doors, kept (his spec 8/20) */
-  const opts = document.createElement("div"); opts.className = "acct";
-  opts.innerHTML = '<div class="lab">OPTIONS</div>';
-  const justJot = document.createElement("button"); justJot.className = "mrow";
-  justJot.innerHTML = '<span>Just Jot</span><span class="sub">KEEP EVERYTHING ON THIS DEVICE</span>';
-  justJot.onclick = () => { seen(); if (demoActive()) exitDemo(false); lib.classList.remove("on"); };
-  const demoBtn = document.createElement("button");
-  /* green: it starts something (ruled 8/20, same family as the old Start screen row) */
-  demoBtn.className = demoActive() ? "mrow danger" : "mrow go";
-  demoBtn.innerHTML = demoActive()
-    ? '<span>Exit demo</span><span class="sub">RETURN TO YOUR LOCAL JOTS</span>'
-    : '<span>Demo</span><span class="sub">EXPLORE JOT DOE</span>';
-  demoBtn.onclick = async () => {
-    if (demoActive()){ exitDemo(true); return; }
-    demoBtn.disabled = true;
-    const r = await startDemo();
-    demoBtn.disabled = false;
-    if (r.error) alert(r.error); else seen();
-  };
-  opts.append(justJot, demoBtn);
-  grid.appendChild(opts);
-
-  /* ── DATA - moved here from the library in the 8/20 redesign. Import,
-     Export and the journal archive are account-of-record work, not reading. */
   const s = load();
   const wAll = viewJots(s.jots).reduce((a, j) => a + words(j), 0);
   const nImp = s.jots.reduce((n, j) => n + (isImported(j) ? 1 : 0), 0);
@@ -4603,14 +4609,15 @@ function openAccount(entry){
     event.target.value = "";
   };
   const exportButton = document.createElement("button"); exportButton.className = "mrow";
-  exportButton.innerHTML = `<span>Export</span><span class="sub">${wAll} ${wAll === 1 ? "WORD" : "WORDS"}</span>`;
+  exportButton.innerHTML = `<span>Export</span><span class="sub">${wAll ? wAll + (wAll === 1 ? " WORD" : " WORDS") : "NOTHING TO EXPORT YET"}</span>`;
   exportButton.onclick = doExport;
+  if (!wAll){ exportButton.disabled = true; exportButton.style.opacity = ".45"; }
   const archiveButton = document.createElement("button"); archiveButton.className = "mrow";
   archiveButton.innerHTML = '<span>Imported journals</span><span class="sub">' +
     (nImp ? (showImported() ? "SHOWING" : "HIDDEN") : "NONE IMPORTED") + '</span>';
   if (!nImp){ archiveButton.disabled = true; archiveButton.style.opacity = ".45"; }
   else archiveButton.onclick = () => {
-    localStorage.setItem(SHOW_IMPORTED, showImported() ? "0" : "1"); openAccount();
+    localStorage.setItem(SHOW_IMPORTED, showImported() ? "0" : "1"); renderData();
   };
   /* the old "Start screen" row died with the start screen (his spec, 8/20) */
   data.append(importButton, exportButton, fileInput, archiveButton);
@@ -4619,7 +4626,108 @@ function openAccount(entry){
     importButton.querySelector(".sub").textContent = "OFF IN DEMO";
     exportButton.querySelector(".sub").textContent = "OFF IN DEMO";
   }
+  /* ★ Trash. 30 days, restore or empty. */
+  const binned = s.jots.filter(trashed);
+  const trash = document.createElement("button"); trash.className = "mrow";
+  trash.innerHTML = '<span>Trash</span><span class="sub">' +
+    (binned.length ? binned.length + (binned.length===1?" JOT":" JOTS") + ", " + TRASH_DAYS + " DAYS" : "EMPTY") + '</span>';
+  if (!binned.length || demoActive()){ trash.disabled = true; trash.style.opacity = ".45"; }
+  else trash.onclick = () => renderTrash();
+  data.appendChild(trash);
   grid.appendChild(data);
+
+  /* ★ where the jots actually are, and how much room is left. Before this the
+     first signal of a full store was the failure banner. */
+  const where = document.createElement("div"); where.className = "acct";
+  where.innerHTML = '<div class="lab">THIS DEVICE</div>';
+  const bytes = (localStorage.getItem(KEY) || "").length;
+  const kb = n => n < 1024 ? n + " B" : (n/1024).toFixed(n < 1048576 ? 0 : 1) + (n < 1048576 ? " KB" : " MB");
+  const rows = [
+    ["Stored here", kb(bytes)],
+    ["Jots", String(liveJots(ownJots(s.jots)).length)],
+    ["Account", auth.signedIn ? "Synced to " + (auth.email || "your account") : "None. These jots are on this device only"]
+  ];
+  rows.forEach(([k,v]) => {
+    const r = document.createElement("div"); r.className = "mrow"; r.style.cursor = "default";
+    r.innerHTML = '<span></span><span class="sub"></span>';
+    r.children[0].textContent = k; r.children[1].textContent = v.toUpperCase();
+    where.appendChild(r);
+  });
+  grid.appendChild(where);
+}
+
+/* the trash list. restore puts a jot back exactly as it was; empty is the one
+   irreversible button in this app, so it says so and it counts. */
+function renderTrash(){
+  paintNav("data");
+  libBody.innerHTML = "";
+  const grid = document.createElement("div"); grid.className = "acctwrap";
+  libBody.appendChild(grid);
+  const card = document.createElement("div"); card.className = "acct";
+  card.innerHTML = '<div class="lab">TRASH</div>';
+  const back = document.createElement("button"); back.className = "mrow";
+  back.innerHTML = '<span>&#8592; &nbsp;Data</span><span class="sub">IMPORT AND EXPORT</span>';
+  back.onclick = renderData;
+  card.appendChild(back);
+  const st = load(), binned = st.jots.filter(trashed);
+  binned.forEach(j => {
+    const row = document.createElement("button"); row.className = "mrow";
+    row.innerHTML = '<span></span><span class="sub">RESTORE</span>';
+    row.children[0].textContent =
+      (j.paragraphs[0] && j.paragraphs[0].text || "(empty)").slice(0, 48);
+    row.onclick = () => {
+      const cur = load(), t = cur.jots.find(x => x.jot_id === j.jot_id);
+      if (t) delete t.trashed_at;
+      save(cur); renderTrash();
+    };
+    card.appendChild(row);
+  });
+  if (binned.length){
+    const empty = document.createElement("button"); empty.className = "mrow danger";
+    empty.innerHTML = '<span>Empty trash</span><span class="sub">' + binned.length + ' GONE FOR GOOD</span>';
+    empty.onclick = () => {
+      if (!confirm("Delete " + binned.length + (binned.length===1?" jot":" jots") + " for good? This cannot be undone.")) return;
+      const cur = load();
+      cur.jots = cur.jots.filter(x => !trashed(x));
+      binned.forEach(j => { if (typeof syncTombstone === "function") syncTombstone(j.jot_id); });
+      save(cur); renderData();
+    };
+    card.appendChild(empty);
+  }
+  grid.appendChild(card);
+}
+
+function openAccount(){
+  paintNav("account");
+  const signed = auth.signedIn;
+  const wrap = document.createElement("div");
+  wrap.className = "acct";
+  wrap.innerHTML =
+    '<div class="lab">ACCOUNT</div>' +
+    (signed
+      ? '<div class="who"></div>' +
+        '<div class="note" id="aSyncNote"></div>' +
+        '<button class="abtn pri" id="aSync">Sync now</button>' +
+        '<button class="abtn" id="aOut">Sign out</button>'
+      : '<div class="note">Midnight Jot works with or without an account, which allows users to sync jots between devices.</div>' +
+        '<input class="ain" id="aEmail" type="email" placeholder="Email" autocomplete="username">' +
+        '<input class="ain" id="aPw" type="password" placeholder="Password" autocomplete="current-password">' +
+        '<button class="abtn pri" id="aIn">Sign in</button>' +
+        '<button class="abtn" id="aUp">Create account</button>' +
+        /* the third door. .abtn, not .alink, so busy() disables it during an
+           in-flight sign-in - and it wears Create account's exact tier, his
+           call 8/28 after seeing the quieter version on screen. */
+        '<button class="abtn" id="aSkip">Continue without account</button>' +
+        '<button class="alink" id="aForgot">Forgot password</button>') +
+    '<div class="amsg" id="aMsg"></div>';
+
+  libBody.innerHTML = "";
+  const grid = document.createElement("div");
+  grid.className = "acctwrap";
+  libBody.appendChild(grid);
+  grid.appendChild(wrap);
+
+
   /* textContent, not innerHTML - an email is user input and must never be
      interpolated into markup. */
   if (signed) wrap.querySelector(".who").textContent = auth.email || "";
@@ -4653,9 +4761,7 @@ function openAccount(entry){
     if (!c[0] || !c[1]) return say({ error: "Email and password, both." });
     busy(true); say({ ok: "Signing you in..." }, true);
     const r = await doSignIn(c[0], c[1]); busy(false); say(r);
-    if (r.ok){ seen(); setTimeout(() => {
-      if (entry){ lib.classList.remove("on"); renderHome(); } else openAccount();
-    }, 700); }
+    if (r.ok) setTimeout(openAccount, 700);
   };
   /* Enter = Sign in here too, same rule as the gate (8/20) */
   ["#aEmail", "#aPw"].forEach(function(sel){
@@ -4669,10 +4775,9 @@ function openAccount(entry){
     if (c[1].length < 6) return say({ error: "Password needs at least 6 characters." });
     busy(true); say({ ok: "Creating your account..." }, true);
     const r = await doSignUp(c[0], c[1]); busy(false); say(r);
-    if (r.ok && auth.signedIn){ seen(); setTimeout(() => {
-      if (entry){ lib.classList.remove("on"); renderHome(); } else openAccount();
-    }, 700); }
+    if (r.ok && auth.signedIn) setTimeout(openAccount, 700);
   };
+  wrap.querySelector("#aSkip").onclick = goWrite;
   wrap.querySelector("#aForgot").onclick = async function(){
     const c = creds();
     if (!c[0]) return say({ error: "Put your email in the box first." });
