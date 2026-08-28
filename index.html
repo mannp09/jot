@@ -1060,11 +1060,15 @@ body::before{
   letter-spacing:var(--tr-label);text-transform:uppercase;opacity:.75}
 .statrow .sv{grid-area:v;font-size:var(--f4);font-weight:800;color:var(--ink);
   font-variant-numeric:tabular-nums}
-.sbar{display:grid;grid-template-columns:74px 1fr 34px;align-items:center;
+.sbar{display:grid;grid-template-columns:118px 1fr 34px;align-items:center;
   gap:9px;padding:5px 2px}
+/* ⚠ was 74px + ellipsis, which cut every window name to "MIDNIGHT ...".
+   the name is the label; truncating it makes the chart unreadable. */
 .sbar .sn{font-size:var(--f0);font-weight:700;letter-spacing:var(--tr-label);
-  color:var(--muted);text-transform:uppercase;overflow:hidden;
-  text-overflow:ellipsis;white-space:nowrap}
+  color:var(--muted);text-transform:uppercase;line-height:1.25}
+.sbar .sn i{display:block;font-style:normal;font-weight:700;opacity:.62;
+  letter-spacing:0;text-transform:none}
+@media (max-width:420px){ .sbar{grid-template-columns:100px 1fr 30px} }
 .sbar .bar{height:9px;border-radius:5px;background:var(--rule);overflow:hidden}
 .sbar .bar i{display:block;height:100%;background:var(--accent);border-radius:5px}
 .sbar .sc{font-size:var(--f1);font-weight:700;color:var(--muted);
@@ -3755,7 +3759,7 @@ function renderStats(){
                     longestAt ? "ENDED " + clk(longestAt) : "");
 
   /* --- the two distributions --------------------------------------------- */
-  const chart = (title, pairs, note) => {
+  const chart = (title, pairs, note, sub) => {
     const h = document.createElement("div");
     h.className = "flab"; h.style.margin = "22px 0 8px";
     h.textContent = title;
@@ -3765,7 +3769,13 @@ function renderStats(){
       const r = document.createElement("div");
       r.className = "sbar";
       r.innerHTML = `<span class="sn"></span><span class="bar"><i></i></span><span class="sc"></span>`;
-      r.querySelector(".sn").textContent = name;
+      const sn = r.querySelector(".sn");
+      sn.textContent = name;
+      /* the window names are evocative, not descriptive - "Back Drift" says
+         nothing about when. The hours do. */
+      if (sub && sub[name]){
+        const t = document.createElement("i"); t.textContent = sub[name]; sn.appendChild(t);
+      }
       r.querySelector(".bar i").style.width = (n / max * 100).toFixed(1) + "%";
       r.querySelector(".sc").textContent = n;
       libBody.appendChild(r);
@@ -3783,9 +3793,18 @@ function renderStats(){
 
   /* ★ day parts in CLOCK order, never sorted by size - the shape of the day is
      the information, and re-ordering it destroys exactly that. */
+  /* derived from DAYPARTS, never typed - the ranges cannot drift from the
+     buckets they describe. */
+  const hr = m => { const h = Math.floor(m / 60) % 24;
+    return (h % 12 === 0 ? 12 : h % 12) + (h < 12 ? "am" : "pm"); };
+  const spans = {};
+  DAYPARTS.forEach((p, i) => {
+    const name = showingFun() ? p[2] : p[1].toUpperCase();
+    spans[name] = hr(p[0]) + "-" + hr(DAYPARTS[(i + 1) % DAYPARTS.length][0]);
+  });
   chart("BY WINDOW",
         DAYPARTS.map(p => [showingFun() ? p[2] : p[1].toUpperCase(), byPart.get(p[1]) || 0]),
-        "Each window is three hours, so a bar is a rate and not an artifact of bucket width.");
+        null, spans);
 }
 
 function renderJot(j){
