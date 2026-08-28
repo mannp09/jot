@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-build="v101">
+<html lang="en" data-build="v102">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
@@ -249,6 +249,10 @@ header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
 .brand .bsub b{font-weight:900}
 .when{font-size:var(--f1);font-weight:700;letter-spacing:var(--tr-label);color:var(--muted);
   font-variant-numeric:tabular-nums;text-align:right;line-height:1.35}
+.daybtn{min-height:44px;margin:-12px -6px -12px 0;padding:0 6px;border:0;background:none;
+  color:inherit;font:inherit;font-weight:inherit;letter-spacing:inherit;text-transform:uppercase;
+  cursor:pointer;border-radius:8px}
+.daybtn:focus-visible{outline:3px solid var(--accent);outline-offset:1px}
 .iconbtn{flex:0 0 auto;width:46px;height:46px;border-radius:12px;
   border:1px solid var(--rule);background:var(--card);color:var(--accent);
   font-size:var(--f4);line-height:1;cursor:pointer;display:flex;
@@ -259,6 +263,7 @@ header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
 
 /* ---------- home ---------- */
 #home{display:flex;flex-direction:column;gap:12px;flex:1}
+[hidden]{display:none!important}
 .card{flex:1;min-height:96px;background:var(--card);border:1px solid var(--rule);
   border-radius:16px;padding:18px;text-align:left;cursor:pointer;
   display:flex;flex-direction:column;justify-content:center;gap:8px;
@@ -317,7 +322,7 @@ html.ioskb-nobidi #lines{unicode-bidi:normal!important}
 #lib.on{display:flex;z-index:120}   /* above the gate overlay (z 99) so the burger works from the start screen too */
 #libtop{display:flex;align-items:center;gap:12px;padding-bottom:12px;
   border-bottom:1px solid var(--rule)}
-#libtop .brand{cursor:pointer}
+#libtop .brand{cursor:pointer;border:0;background:none;color:inherit;text-align:left;padding:0}
 /* ⚠ NO flex here. flex:1 starved the clock into wrapping (2 lines at 390px, more
    below it), which inflated #libtop past header's 58px and threw JOT and the theme
    toggle off header's level - +2.22px at 390, and INVERTING to -22px at 344-360.
@@ -327,6 +332,7 @@ html.ioskb-nobidi #lines{unicode-bidi:normal!important}
    mirrored header - every page keeps its label, the header stays identical */
 .libpagetitle{font-size:var(--f1);font-weight:700;letter-spacing:var(--tr-micro);
   color:var(--muted);text-transform:uppercase;padding:2px 2px 10px}
+.libpagetitle:focus{outline:0!important}
 
 /* ── the drawer ── */
 #scrim{position:fixed;inset:0;z-index:390;background:rgb(0 0 0 / .42);
@@ -409,7 +415,7 @@ html.ioskb-nobidi #lines{unicode-bidi:normal!important}
 .dabout a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .dabt{font:inherit;font-size:11px;font-weight:700;letter-spacing:var(--tr-micro);
   text-transform:uppercase;color:var(--muted);background:none;border:0;cursor:pointer;
-  padding:2px 0;display:inline-flex;align-items:center;gap:5px}
+  min-height:44px;padding:2px 0;display:inline-flex;align-items:center;gap:5px}
 .darr{color:var(--accent);font-size:12px}
 .dabody{margin-top:6px}
 .dabrand{font-weight:800;letter-spacing:.12em;color:var(--ink)}
@@ -449,6 +455,11 @@ html.ioskb-nobidi #lines{unicode-bidi:normal!important}
 .libpanel{display:flex;flex-direction:column;gap:7px;padding:0 8px 8px;border-top:1px solid var(--rule)}
 .libpanel .mrow{min-height:46px;margin-top:7px;background:var(--card)}
 .libpanel .srch{margin:8px 0 0}
+.library-search{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;align-items:center;margin:0 0 8px}
+.library-search .srch{margin:0;min-height:46px}
+.search-clear{width:44px;height:44px;border:1px solid var(--rule);border-radius:11px;
+  background:var(--card);color:var(--accent);font:800 var(--f2)/1 'Manrope',sans-serif;cursor:pointer}
+.libsection.profile-row > summary{min-height:44px}
 .library-timeline-heading{display:flex;align-items:end;justify-content:space-between;gap:12px;
   margin:16px 0 8px;padding:0 2px 8px;border-bottom:1px solid var(--rule);color:var(--ink)}
 .library-timeline-heading b{font-size:var(--f0);letter-spacing:var(--tr-micro)}
@@ -494,8 +505,6 @@ html.ioskb-nobidi #lines{unicode-bidi:normal!important}
   .card .q{font-size:var(--f4)}
 }
 
-
-
 /* ---------------------------------------------------------- the checklist ---
    His layout: a list, a box on the left, the question beside it, tap or type
    to maximise, save and you are back. Deliberately ONE colour - he said the
@@ -529,7 +538,7 @@ html.ioskb-nobidi #lines{unicode-bidi:normal!important}
   margin-bottom:calc(70px + max(env(safe-area-inset-bottom), 20px))}
 .deckfoot .tally{margin-top:0}
 .deckbtn,.qctl button,.promptform button{
-  min-height:34px;padding:0 11px;border:1px solid var(--rule);border-radius:10px;
+  min-height:44px;padding:0 11px;border:1px solid var(--rule);border-radius:10px;
   background:var(--card);color:var(--accent);font:800 var(--f0)/1 'Manrope',sans-serif;
   letter-spacing:var(--tr-label);text-transform:uppercase;cursor:pointer
 }
@@ -576,14 +585,16 @@ html.ioskb-nobidi #lines{unicode-bidi:normal!important}
      slightly smaller stamp keeps seven characters inside the margin. */
   .row::before{left:8px;width:52px;white-space:nowrap;font-size:10px;letter-spacing:.2px}
 }
-.box{flex:0 0 auto;width:26px;height:26px;border-radius:7px;cursor:pointer;
-  border:2px solid var(--rule);background:transparent;color:transparent;
+.box{position:relative;flex:0 0 auto;min-width:44px;min-height:44px;width:44px;height:44px;cursor:pointer;
+  border:0;background:transparent;color:transparent;
   display:grid;place-items:center;padding:0;font:700 var(--f2)/1 inherit;
   transition:border-color .18s var(--ease-out-4),background-color .18s var(--ease-out-4)}
+.box::before{content:"";position:absolute;width:30px;height:30px;border-radius:9px;
+  border:2px solid var(--atelier-edge,var(--rule));background:color-mix(in srgb,var(--card) 90%,transparent)}
 .box:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
-.task.on .box{background:var(--accent);border-color:var(--accent)}
+.task.on .box::before{background:var(--accent);border-color:var(--accent)}
 .task.on .box .pm{color:#fff}
-.box .pm{color:var(--muted);font-size:var(--f4);font-weight:400;line-height:1}
+.box .pm{position:relative;z-index:1;color:var(--muted);font-size:var(--f4);font-weight:400;line-height:1}
 .seed{border:0;background:none;color:var(--ink);font:500 var(--f4)/1.3 inherit;
   width:100%;padding:4px 0;min-height:44px}
 @media (max-width:400px){ .seed{font-size:var(--f3)} }
@@ -1044,7 +1055,7 @@ body::before{
    convention precisely BECAUSE the segmented track is rounded-rect: the two
    silhouettes must not be confusable. */
 .frow .views{display:flex;flex-wrap:wrap;gap:7px}
-.vchip{min-height:40px;padding:0 14px;border-radius:999px;
+.vchip{min-height:44px;padding:0 14px;border-radius:999px;
   display:inline-flex;align-items:center;gap:6px;
   font:700 var(--f1)/1 inherit;letter-spacing:var(--tr-label);
   border:1.5px solid var(--rule);background:var(--card);color:var(--muted)}
@@ -1099,7 +1110,7 @@ body::before{
   letter-spacing:var(--tr-label);text-transform:uppercase;opacity:.75}
 .statrow .sv{grid-area:v;font-size:var(--f4);font-weight:800;color:var(--ink);
   font-variant-numeric:tabular-nums}
-.sbar{display:grid;grid-template-columns:118px 1fr 34px;align-items:center;
+.sbar{display:grid;grid-template-columns:118px 1fr 74px;align-items:center;
   gap:9px;padding:5px 2px}
 /* ⚠ was 74px + ellipsis, which cut every window name to "MIDNIGHT ...".
    the name is the label; truncating it makes the chart unreadable. */
@@ -1107,11 +1118,18 @@ body::before{
   color:var(--muted);text-transform:uppercase;line-height:1.25}
 .sbar .sn i{display:block;font-style:normal;font-weight:700;opacity:.62;
   letter-spacing:0;text-transform:none}
-@media (max-width:420px){ .sbar{grid-template-columns:100px 1fr 30px} }
+@media (max-width:420px){ .sbar{grid-template-columns:96px 1fr 68px} }
 .sbar .bar{height:9px;border-radius:5px;background:var(--rule);overflow:hidden}
 .sbar .bar i{display:block;height:100%;background:var(--accent);border-radius:5px}
 .sbar .sc{font-size:var(--f1);font-weight:700;color:var(--muted);
   font-variant-numeric:tabular-nums;text-align:right}
+.pattern-period{display:flex;flex-wrap:wrap;gap:7px;margin:2px 0 14px}
+.pattern-period button{min-height:44px;padding:0 14px;border:1px solid var(--rule);border-radius:999px;
+  background:var(--card);color:var(--muted);font:800 var(--f0)/1 'Manrope',sans-serif;
+  letter-spacing:var(--tr-label);text-transform:uppercase;cursor:pointer}
+.pattern-period button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.pattern-context{font-size:var(--f1);font-weight:800;letter-spacing:var(--tr-label);
+  color:var(--accent);text-transform:uppercase;margin:0 0 8px}
 
 /* ⚠⚠ MEASURE. Measured on a 1280px window: 740px of text = ~90 CHARACTERS
    PER LINE. Comfortable prose is 45-75; past about 80 the eye loses its place
@@ -1193,7 +1211,7 @@ body::before{
 /* --- 5 · group headers stay legible at depth ----------------------------- */
 .grp{min-height:46px}
 .gmain{min-height:44px}
-.gall{min-width:40px;min-height:40px}
+.gall{min-width:44px;min-height:44px}
 
 @media (min-width:520px){
   /* on a wide screen the stacked label wastes a line, so put it back beside */
@@ -1201,7 +1219,6 @@ body::before{
     gap:10px;padding:0 0 12px}
   .flab{padding:0}
 }
-
 
 /* ★ fills the page since 8/20 ("account screen to fill the width") - on
    desktop the auth half and the data half sit side by side across the 920.
@@ -1216,6 +1233,8 @@ body::before{
 @media (min-width:760px){ .acctwrap{max-width:460px} }
 .acct .who{font-weight:800;font-size:15px}
 .acct .note{font-size:12.5px;color:var(--muted);line-height:1.45}
+.acct label{font-size:var(--f0);font-weight:800;letter-spacing:var(--tr-micro);
+  color:var(--muted);text-transform:uppercase;margin-bottom:-5px}
 /* ⚠ was background:#fff with color:var(--ink) - in dark mode that is cream
    text on a hard-coded white field, so everything he TYPED was invisible
    (caught live on Sign up, 8/20). Same token-pairing rule as .abtn below:
@@ -1231,12 +1250,18 @@ body::before{
    cream button with white text, the invisible Sign up (ruled 8/20). Surfaces
    and text now come from one token family in both themes, auth modal included. */
 .abtn.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
+.abtn.quiet{background:transparent;border-style:dashed;color:var(--accent)}
 .abtn[disabled]{opacity:.5}
 .alink{font:inherit;font-size:13px;background:none;border:0;color:var(--muted);
-       text-decoration:underline;cursor:pointer;padding:6px 2px;align-self:flex-start}
+       text-decoration:underline;cursor:pointer;padding:6px 2px;min-height:44px;
+       align-self:flex-start}
 .amsg{font-size:13px;min-height:18px;line-height:1.45}
 .amsg.bad{color:#b3261e}
 .amsg.good{color:var(--ink)}
+.data-status{min-height:22px;font-size:var(--f1);color:var(--muted);line-height:1.4}
+.mrow .sub{min-width:0;overflow-wrap:anywhere;word-break:break-word}
+.mrow.unavailable{opacity:1;background:color-mix(in srgb,var(--card) 70%,transparent)}
+.mrow.unavailable .sub{color:var(--muted);font-weight:600}
 /* in-flight state: a quiet ring ahead of the line, never a bare word */
 .amsg.spin::before{content:"";display:inline-block;width:11px;height:11px;
   border:2px solid var(--rule);border-top-color:var(--accent);border-radius:50%;
@@ -1271,6 +1296,7 @@ body::before{
      wrap, header height unchanged at 58px, zero letter overlaps. */
   .brand .bsub{font-size:10.5px;font-weight:700}
 }
+
 .gside{display:flex;align-items:flex-start;gap:10px}
 .gclock{text-align:right;font-size:11px;font-weight:700;letter-spacing:.06em;
   text-transform:uppercase;color:var(--muted);line-height:1.55}
@@ -1483,11 +1509,20 @@ header,#padtop,#libtop{min-height:58px}
 }
 
 @media (max-width:759px){
-  header{padding-bottom:4px;border-bottom:1px solid color-mix(in srgb,var(--rule) 62%,transparent)}
+  header,#libtop{display:grid;grid-template-columns:auto minmax(0,1fr) auto;
+    grid-template-areas:"menu brand theme" "when when when";gap:4px 12px;
+    padding-bottom:8px;border-bottom:1px solid color-mix(in srgb,var(--rule) 62%,transparent)}
+  header .burger,#libtop .burger{grid-area:menu}
+  header .brand,#libtop .brand{grid-area:brand}
+  header .theme-toggle,#libtop .theme-toggle{grid-area:theme}
+  header .when,#libtop .when{grid-area:when;text-align:right;white-space:nowrap;min-height:44px;
+    display:flex;justify-content:flex-end;align-items:center}
+  header .when br,#libtop .when br{display:none}
+  header .when .clock-sep,#libtop .when .clock-sep{margin-left:8px}
   /* match header's 4px. At 12px the clock's own height pushed #libtop to 61.56px
      against header's 58px, so JOT and the toggle sat off header's level. min-height
      absorbs the removed 8px, so the hairline lands in the same place either way. */
-  #libtop{padding-bottom:4px}
+  #libtop{margin-bottom:8px}
   .task{border-bottom-color:color-mix(in srgb,var(--rule) 65%,transparent)}
   /* ⚠ THIS HAS TO LIVE HERE, NOT IN THE EARLIER MOBILE BLOCK. The Atelier
      `.brand{font-size:28px}` further up has identical specificity and comes
@@ -1496,6 +1531,14 @@ header,#padtop,#libtop{min-height:58px}
      Growing the lockup is half the MIDNIGHT fix: it widens the letter gaps
      (1.18 -> 1.71px) that the bigger sub would otherwise eat. */
   .brand{font-size:30px}
+}
+
+/* A 320px phone cannot fit date + time + daypart on one line without pushing
+   the date past the left edge. This follows the base mobile rule so it wins. */
+@media (max-width:359px){
+  header .when,#libtop .when{white-space:normal;flex-wrap:wrap;line-height:1.25}
+  header .when > span:first-child,#libtop .when > span:first-child{flex:0 0 100%}
+  header .when .clock-sep,#libtop .when .clock-sep{margin-left:0}
 }
 
 @media (prefers-reduced-motion:reduce){
@@ -1546,7 +1589,7 @@ header,#padtop,#libtop{min-height:58px}
 <body>
 <div id="app">
   <header>
-    <button class="iconbtn burger" id="menu" aria-label="Open library"><i></i><i></i><i></i></button>
+    <button class="iconbtn burger" id="menu" type="button" aria-label="Open menu"><i></i><i></i><i></i></button>
     <div class="brand">JOT</div>
     <div class="when" id="clock"></div>
     <button class="iconbtn theme-toggle" id="themeToggle" type="button" data-theme-toggle aria-label="Switch to dark mode" aria-pressed="false">
@@ -1555,9 +1598,9 @@ header,#padtop,#libtop{min-height:58px}
     </button>
   </header>
 
-  <main id="home"></main>
+  <main id="home" aria-hidden="false"></main>
 
-  <section id="pad">
+  <section id="pad" hidden aria-hidden="true" inert>
     <div id="padtop">
       <div id="padq"><div class="pcat" id="pcat"></div><div class="pq" id="pq"></div></div>
       <button class="iconbtn" id="done" aria-label="Save this jot">DONE</button>
@@ -1582,13 +1625,13 @@ header,#padtop,#libtop{min-height:58px}
   </section>
 </div>
 
-<section id="lib">
+<section id="lib" hidden aria-hidden="true" inert>
   <!-- ★ the library wears the SAME top as the questions page (ruled 8/20:
        "JOT date and night shift to be on all pages"): burger, brand, live
        clock, theme. The brand is the way back to writing on every page. -->
   <div id="libtop">
     <button class="iconbtn burger" id="libMenu" aria-label="Open menu"><i></i><i></i><i></i></button>
-    <div class="brand" id="libBrand" role="button" tabindex="0" title="Back to writing">JOT</div>
+    <button class="brand" id="libBrand" type="button" title="Back to writing">JOT</button>
     <div class="when" id="clock2"></div>
     <button class="iconbtn theme-toggle" id="libThemeToggle" type="button" data-theme-toggle aria-label="Switch to dark mode" aria-pressed="false">
       <svg class="ic theme-moon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.6 14.1A8 8 0 0 1 9.9 3.4 9 9 0 1 0 20.6 14.1Z"/></svg>
@@ -1601,7 +1644,7 @@ header,#padtop,#libtop{min-height:58px}
 <!-- ★ the drawer: the burger's one job on every page (his redesign, 8/20).
      Navigation between AREAS, not a settings dump - each row is a place. -->
 <div id="scrim" hidden></div>
-<nav id="drawer" aria-label="Areas" aria-hidden="true">
+<nav id="drawer" aria-label="Areas" hidden inert aria-hidden="true">
   <!-- no wordmark here (ruled 8/20): the header already carries it -->
   <!-- label is "Jot" (ruled 8/28); data-nav stays "write" - the token is never
        rendered and renaming it would touch five sites for no user benefit. -->
@@ -1941,7 +1984,64 @@ if (IOS_KB_FLAGS.size){
 $("#done").innerHTML = I.check;
 $("#jumpFirst").innerHTML = I["chevron-down"];
 $("#jumpLatest").innerHTML = I["chevron-down"];
+/* VIEW_STATE_PURE_START */
+function routeSurface(route){
+  if (route === "pad") return "pad";
+  if (["library", "patterns", "account", "data", "reader", "trash"].includes(route)) return "lib";
+  return "home";
+}
+
+function viewState(route, drawerOpen=false, desktopDock=false){
+  const surface = routeSurface(route);
+  const stateFor = name => {
+    const active = name === surface;
+    return { active, hidden:!active, ariaHidden:String(!active), inert:!active };
+  };
+  const drawerActive = !!drawerOpen;
+  return {
+    home:stateFor("home"),
+    pad:stateFor("pad"),
+    lib:stateFor("lib"),
+    drawer:{ active:drawerActive, hidden:!drawerActive, ariaHidden:String(!drawerActive),
+             inert:!drawerActive && !desktopDock }
+  };
+}
+
+function routeScrollMode(previous, next, returningToTimeline=false){
+  if (previous === next) return "keep";
+  if (previous === "reader" && next === "library" && returningToTimeline) return "restore-library";
+  return "top";
+}
+/* VIEW_STATE_PURE_END */
+
 const home=$("#home"), pad=$("#pad"), lib=$("#lib"), libBody=$("#libbody");
+
+function applySurfaceState(element, state){
+  element.hidden = state.hidden;
+  /* Use the content attribute as well as the property. Older WebKit builds
+     can expose `inert` without reliably reflecting a property assignment,
+     while the attribute gives the accessibility tree an explicit signal. */
+  element.toggleAttribute("inert", state.inert);
+  element.inert = state.inert;
+  element.setAttribute("aria-hidden", state.ariaHidden);
+  element.classList.toggle("on", state.active);
+}
+
+function showView(route){
+  const menuOpen = typeof drawer !== "undefined" && drawer.classList.contains("on");
+  const desktopDock = typeof drawerIsModal === "function" && !drawerIsModal();
+  const state = viewState(route, menuOpen, desktopDock);
+  applySurfaceState(home, state.home);
+  applySurfaceState(pad, state.pad);
+  applySurfaceState(lib, state.lib);
+  if (menuOpen && !desktopDock){
+    [home, pad, lib].forEach(surface => {
+      surface.toggleAttribute("inert", true);
+      surface.inert = true;
+      surface.setAttribute("aria-hidden", "true");
+    });
+  }
+}
 let live = null;
 
 /* Order is fixed rather than clever. An order that reshuffles by time of day
@@ -2204,22 +2304,21 @@ function clock(){
   dayTint();
   const n = new Date(), part = partOf(n);
   const html =
-    `${longDate(n)}<br>` +
-    `<span style="opacity:.78">${clk(n)} ${tzAbbr(n)} &nbsp;|&nbsp; ` +
-    `<span class="dp" role="button" tabindex="0" title="Tap to swap lists">${partName(part)}</span></span>`;
+    `<span>${longDate(n)}</span><br>` +
+    `<span class="clock-sep" style="opacity:.78">${clk(n)} ${tzAbbr(n)} &nbsp;|&nbsp; ` +
+    `<button class="daybtn" type="button" title="Swap day-part names">${partName(part)}</button></span>`;
   /* ★ ONE painter, EVERY header (ruled 8/20: the same top on all pages).
      Two elements, one string - they cannot drift. .dp is a class now: the
      old #dp id would have been a duplicate the moment there were two. */
   for (const el of [$("#clock"), $("#clock2")]){
     if (!el) continue;
     el.innerHTML = html;
-    const dp = el.querySelector(".dp");
+    const dp = el.querySelector(".daybtn");
     /* tapping the name swaps to the other list and PINS it. */
     const swap = e => { e.stopPropagation();
       localStorage.setItem(NAMING, showingFun() ? "generic" : "fun");
       clock(); if (lib.classList.contains("on")) renderLib(); };
     dp.addEventListener("click", swap);
-    dp.addEventListener("keydown", e => { if (e.key==="Enter"||e.key===" ") swap(e); });
   }
 }
 
@@ -2298,7 +2397,7 @@ function renderPromptForm(){
 
 function renderHome(){
   paintNav("write");
-  pad.classList.remove("on"); home.style.display="flex"; live=null;
+  showView("write"); live=null;
   home.innerHTML = "";
   /* ★ 8/20 layout ruling: the questions start right under the header and
      STRETCH to fill the screen; Edit questions moved down beside the tally.
@@ -2430,6 +2529,10 @@ function renderHome(){
     /* tick, then expand. the tick is the only confirmation a touch gets
        before the screen changes, and it rides the transition out. */
     box.addEventListener("click", () => { row.classList.add("on"); openPad(cat, row); });
+    row.addEventListener("click", event => {
+      if (event.target.closest("button,input")) return;
+      row.classList.add("on"); openPad(cat, row);
+    });
     row.append(box, seed, cnt);
     if (passes === 3 && pass !== 1) row.setAttribute("aria-hidden", "true");
     deck.appendChild(row);
@@ -2689,6 +2792,7 @@ function focusEnd(){
 
 function openPad(cat, cardEl, immediate){
   const now = new Date();
+  activeRoute = "pad";
 
   /* ★★★ A JOT IS CONTINUOUS. His spec: "when loose is clicked again you can
      see the prior notes in the notepad with time stamps ... a jot can have
@@ -2723,7 +2827,7 @@ function openPad(cat, cardEl, immediate){
     const q = lastCard.querySelector(".q");
     if (q) q.style.viewTransitionName = "promptline";
   }
-  const reveal = () => { home.style.display="none"; pad.classList.add("on"); };
+  const reveal = () => showView("pad");
   const vt = immediate ? (reveal(), null) : morph(reveal);
   const clear = () => { if (!lastCard) return;
     lastCard.style.viewTransitionName = "";
@@ -2972,7 +3076,7 @@ $("#done").addEventListener("click", saveAndHome);
 function words(j){ return j.paragraphs.reduce((a,p) =>
   a + p.text.trim().split(/\s+/).filter(Boolean).length, 0); }
 
-function openLib(){ lib.classList.add("on"); renderLib(); }
+function openLib(){ enterRoute("library", renderLib); }
 
 /* ── the drawer: every burger opens THIS, and each row is an area ──────────
    ★ Ruled 8/20: "clicking hamburger should be more of side panel that can
@@ -2984,6 +3088,25 @@ const drawer = $("#drawer"), scrim = $("#scrim");
    wordmark, Escape, leaving the demo - left the menu pointing at the wrong row.
    Views paint it now; clicks do not. */
 let currentView = "write";
+let activeRoute = "write";
+let libraryScrollTop = 0;
+function enterRoute(route, render, options={}){
+  const previous = activeRoute;
+  if (previous === "library" && route === "reader") libraryScrollTop = libBody.scrollTop;
+  activeRoute = route;
+  showView(route);
+  if (typeof render === "function") render();
+  const scrollMode = routeScrollMode(previous, route, !!options.returnToTimeline);
+  requestAnimationFrame(() => {
+    if (routeSurface(route) === "lib"){
+      libBody.scrollTop = scrollMode === "restore-library" ? libraryScrollTop :
+                          scrollMode === "top" ? 0 : libBody.scrollTop;
+      const heading = libBody.querySelector(".libpagetitle");
+      if (heading && options.focus !== false) heading.focus({ preventScroll:true });
+    }
+    if (route === "write" && options.focus !== false) $("#menu")?.focus({ preventScroll:true });
+  });
+}
 const NAV_OF = {write:"write", library:"library", patterns:"patterns",
                 account:"account", data:"data", reader:"library"};
 function paintNav(view){
@@ -3006,12 +3129,14 @@ function paintDemoRow(){
   row.querySelector(":scope > span").textContent =
     on ? "Return to your local jots" : "Jot Doe, five years";
 }
+let drawerOpener = null;
 function openDrawer(){
+  drawerOpener = document.activeElement;
   const who = $("#dWho"), acct = $("#dAcctSub");
   who.textContent = auth.signedIn ? (auth.email || "Signed in") : "Not signed in";
   acct.textContent = auth.signedIn ? "Email and sync" : "Sign in · sync";
   paintDemoRow(); paintNav();
-  scrim.hidden = false;
+  scrim.hidden = false; drawer.hidden = false; drawer.inert = false;
   /* ⚠ synchronous, with a forced reflow for the transition - the old
      requestAnimationFrame version simply never fired in a backgrounded tab,
      so the drawer silently refused to open there (caught 8/20). */
@@ -3019,12 +3144,21 @@ function openDrawer(){
   drawer.classList.add("on"); scrim.classList.add("on");
   document.body.classList.add("dopen");
   drawer.setAttribute("aria-hidden", "false");
+  /* Move focus before hiding the page behind the modal. Chromium refuses an
+     aria-hidden change when the focused opener is still inside that page. */
+  if (drawerIsModal()) drawer.querySelector(".drow")?.focus();
+  showView(activeRoute);
 }
 function closeDrawer(){
   drawer.classList.remove("on"); scrim.classList.remove("on");
   document.body.classList.remove("dopen");
   drawer.setAttribute("aria-hidden", "true");
-  setTimeout(() => { if (!scrim.classList.contains("on")) scrim.hidden = true; }, 240);
+  drawer.inert = true;
+  showView(activeRoute);
+  setTimeout(() => {
+    if (!scrim.classList.contains("on")){ scrim.hidden = true; drawer.hidden = true; }
+  }, 240);
+  if (drawerOpener && typeof drawerOpener.focus === "function") drawerOpener.focus({ preventScroll:true });
 }
 /* the burger is a TOGGLE - on desktop the drawer docks and stays */
 function toggleDrawer(){
@@ -3035,8 +3169,10 @@ function goWrite(){
   /* the ONE way back to the pad, and the one exit from the demo (ruled 8/28).
      it calls no render - #home is already painted underneath - so the nav
      paint has to happen here or four routes stay stale. */
-  if (demoActive()) exitDemo(false);
-  lib.classList.remove("on");
+  if (demoActive()){
+    DEMO_STORE = null; resetLibraryView(); paintDemoRow();
+  }
+  enterRoute("write", renderHome);
   paintDemoRow(); paintNav("write");
 }
 scrim.addEventListener("click", closeDrawer);
@@ -3050,7 +3186,7 @@ document.addEventListener("keydown", e => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const t = e.target;
   if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
-  if (e.key === "/"){ e.preventDefault(); openLib(); lib.classList.add("on");
+  if (e.key === "/"){ e.preventDefault(); openLib();
     const q = document.querySelector("#libSearch,#lsearch,input[type=search]"); if (q) q.focus(); return; }
   if (e.key === "n" || e.key === "N"){ e.preventDefault(); goWrite(); }
 });
@@ -3058,6 +3194,15 @@ document.addEventListener("keydown", e => {
   if (e.key !== "Escape") return;
   if (drawer.classList.contains("on")) closeDrawer();
   else if (lib.classList.contains("on")) goWrite();
+});
+document.addEventListener("keydown", e => {
+  if (e.key !== "Tab" || !drawer.classList.contains("on") || !drawerIsModal()) return;
+  const focusable = [...drawer.querySelectorAll('button:not([disabled]),a[href],input:not([disabled]),[tabindex]:not([tabindex="-1"])')]
+    .filter(node => !node.hidden && node.getClientRects().length);
+  if (!focusable.length) return;
+  const first = focusable[0], last = focusable[focusable.length - 1];
+  if (e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
 });
 drawer.addEventListener("click", async e => {
   const row = e.target.closest(".drow");
@@ -3069,9 +3214,9 @@ drawer.addEventListener("click", async e => {
   /* the view being opened paints the highlight, not this click - see paintNav */
   if (nav === "write") goWrite();
   if (nav === "library"){ openLib(); }
-  if (nav === "patterns"){ lib.classList.add("on"); renderStats(); }
-  if (nav === "account"){ lib.classList.add("on"); openAccount(); }
-  if (nav === "data"){ lib.classList.add("on"); renderData(); }
+  if (nav === "patterns") enterRoute("patterns", renderStats);
+  if (nav === "account") enterRoute("account", openAccount);
+  if (nav === "data") enterRoute("data", renderData);
   if (nav === "demo"){
     /* read the PAINTED state, not demoActive(): a second click arriving before
        the repaint would otherwise exit a demo he just started. */
@@ -3108,7 +3253,6 @@ $("#dAboutBtn").addEventListener("click", e => {
   e.currentTarget.querySelector(".darr").innerHTML = opening ? "&#9652;" : "&#9662;";
 });
 $("#libBrand").addEventListener("click", goWrite);
-$("#libBrand").addEventListener("keydown", e => { if (e.key==="Enter"||e.key===" ") goWrite(); });
 
 /* ---------------------------------------------------------------- the views ---
    ★★★ His spec, 2026-08-14, in one line: "user creates jots - jots can be seen
@@ -3241,8 +3385,8 @@ const hits = (j, q) => !q || (
 
 /* LIBRARY_SHOWCASE_PURE_START */
 function libraryInitialSections(demo=false){
-  return { profile:!!demo, transfer:false, archive:false, options:false,
-           search:!!demo, patterns:true };
+  return { profile:false, transfer:false, archive:false, options:false,
+            search:!!demo, patterns:true };
 }
 
 function librarySectionOpen(key, saved, defaultOpen=false){
@@ -3250,10 +3394,9 @@ function librarySectionOpen(key, saved, defaultOpen=false){
 }
 
 function libraryTimelineHeading(demo, total){
-  if (!demo) return null;
   return {
     title:"ALL JOTS",
-    meta:`${total.toLocaleString("en-US")} FICTIONAL ${total === 1 ? "JOT" : "JOTS"}`
+    meta:`${total.toLocaleString("en-US")} ${demo ? "FICTIONAL " : ""}${total === 1 ? "JOT" : "JOTS"}`
   };
 }
 /* LIBRARY_SHOWCASE_PURE_END */
@@ -3275,7 +3418,8 @@ function createLibrarySection(label, sub, key, defaultOpen=false){
 /* the page label lives in the BODY now - the bar is the mirrored header and
    never changes. Every renderer names its page with this. */
 function libHeading(text){
-  const h = document.createElement("div");
+  const h = document.createElement("h1");
+  h.tabIndex = -1;
   h.className = "libpagetitle"; h.textContent = text;
   libBody.appendChild(h);
 }
@@ -3313,19 +3457,7 @@ function renderLib(){
      Import/Export, the journal archive and the demo entry moved to the drawer
      and the Account page; day-part naming lives on the clickable day-part in
      every header. What remains is the corpus and the ways into it. */
-  const stack = document.createElement("div"); stack.className = "libstack";
-
-  if (demoActive()){
-    const profile = createLibrarySection("Profile", "FICTIONAL · READ ONLY", "profile");
-    const card = document.createElement("div"); card.className = "demo-profile";
-    card.innerHTML = '<b>Jot Doe</b><span>Born Jan 1, 2001 · Grew up in New Jersey</span><span>5 years · Aug 5, 2021 to Aug 4, 2026</span>';
-    const note = document.createElement("div"); note.className = "demo-note";
-    note.textContent = "Fictional demo. Search, filters, reading, and Patterns work; writing and data changes are off.";
-    profile.panel.append(card, note, mkExitDemoRow());
-    stack.appendChild(profile.details);
-  }
-
-  const search = createLibrarySection("Search", libView.q ? "FILTERING" : "EVERY JOT", "search");
+  const searchWrap = document.createElement("div"); searchWrap.className = "library-search";
   const sb = document.createElement("input");
   sb.className = "srch"; sb.type = "search"; sb.value = libView.q;
   sb.placeholder = "search every jot"; sb.setAttribute("aria-label", "Search every jot");
@@ -3337,18 +3469,38 @@ function renderLib(){
       if (next){ next.focus(); next.setSelectionRange(next.value.length, next.value.length); }
     }, 150);
   };
-  search.panel.appendChild(sb); stack.appendChild(search.details);
+  searchWrap.appendChild(sb);
+  if (libView.q){
+    const clear = document.createElement("button"); clear.type = "button"; clear.className = "search-clear";
+    clear.setAttribute("aria-label", "Clear search"); clear.innerHTML = I.x;
+    clear.onclick = () => { libView.q = ""; renderLib(); libBody.querySelector(".srch")?.focus(); };
+    searchWrap.appendChild(clear);
+  }
+  libBody.appendChild(searchWrap);
 
-  libBody.appendChild(stack);
+  const stack = document.createElement("div"); stack.className = "libstack";
+
+  if (demoActive()){
+    const profile = createLibrarySection("Profile", "FICTIONAL · READ ONLY", "profile");
+    profile.details.classList.add("profile-row");
+    const card = document.createElement("div"); card.className = "demo-profile";
+    card.innerHTML = '<b>Jot Doe</b><span>Born Jan 1, 2001 · Grew up in New Jersey</span><span>5 years · Aug 5, 2021 to Aug 4, 2026</span>';
+    const note = document.createElement("div"); note.className = "demo-note";
+    note.textContent = "Fictional demo. Search, filters, reading, and Patterns work; writing and data changes are off.";
+    profile.panel.append(card, note, mkExitDemoRow());
+    stack.appendChild(profile.details);
+  }
+
+  if (stack.childElementCount) libBody.appendChild(stack);
 
   /* the three-number pulse stays glanceable; the full read is one tap away */
   const daysWritten = new Set(all.map(jot => vector(jot).date)).size;
   const peek = document.createElement("button");
   peek.type = "button"; peek.className = "patternpeek"; peek.title = "Open patterns";
   for (const [value, label] of [[all.length,"JOTS"],[w,"WORDS"],[daysWritten,"DAYS"]]){
-    const cell = document.createElement("div"); cell.innerHTML = `<b>${value}</b><span>${label}</span>`; peek.appendChild(cell);
+    const cell = document.createElement("div"); cell.innerHTML = `<b>${value.toLocaleString("en-US")}</b><span>${label}</span>`; peek.appendChild(cell);
   }
-  peek.onclick = renderStats;
+  peek.onclick = () => enterRoute("patterns", renderStats);
   libBody.appendChild(peek);
   /* LIBRARY_ACCORDION_END */
 
@@ -3362,7 +3514,10 @@ function renderLib(){
 
   if (!all.length){
     const empty = document.createElement("div");
-    empty.className = "empty"; empty.textContent = "No jots yet. Close this and tap a prompt.";
+    empty.className = "empty"; empty.textContent = "No jots yet.";
+    const backToJot = document.createElement("button"); backToJot.type = "button"; backToJot.className = "abtn";
+    backToJot.textContent = "Back to Jot"; backToJot.onclick = goWrite;
+    empty.appendChild(backToJot);
     libBody.appendChild(empty); return;
   }
 
@@ -3537,7 +3692,7 @@ function renderLib(){
       <div class="pv"></div></div>`;
     b.querySelector(".pv").textContent =
       j.paragraphs.slice().reverse().map(p => p.text).join("  \u00b7  ");
-    b.addEventListener("click", () => renderJot(j));
+    b.addEventListener("click", () => enterRoute("reader", () => renderJot(j), { focus:false }));
     return b;
   };
 
@@ -3824,24 +3979,65 @@ function suggest(j){
    ⚠ It also serves BOTH readings of what jot is for - measurement wants the
    distribution, re-experiencing wants "the longest I went without writing" -
    so it is safe to build while that question is still his to answer. */
-function renderStats(){
+/* PATTERN_VIEW_PURE_START */
+function filterPatternJots(rows, period, now=new Date()){
+  if (period === "all") return rows.slice();
+  const end = new Date(now);
+  let start;
+  if (period === "year") start = new Date(end.getFullYear(), 0, 1);
+  else if (period === "90d") start = new Date(end.getTime() - 89 * 86400000);
+  else return rows.slice();
+  return rows.filter(row => {
+    const stamp = new Date(row.opened_at);
+    return stamp >= start && stamp <= end;
+  });
+}
+
+function humanDate(value){
+  const date = value instanceof Date ? value : new Date(String(value).slice(0, 10) + "T12:00:00");
+  const names = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return `${names[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+}
+
+function percentOf(value, total){
+  return total ? Math.round(value / total * 100) + "%" : "0%";
+}
+/* PATTERN_VIEW_PURE_END */
+let patternPeriod = "all";
+
+ function renderStats(){
   paintNav("patterns");
-  const all = viewJots(load().jots);
+  const visible = viewJots(load().jots);
+  const all = filterPatternJots(visible, patternPeriod);
   libBody.innerHTML = "";
   libHeading(demoActive() ? "JOT DOE · PATTERNS" : "PATTERNS");
 
   const back = document.createElement("button");
   back.className = "mrow"; back.style.marginBottom = "10px";
-  back.innerHTML = `<span>&#8592; &nbsp;All jots</span><span class="sub">${all.length} ${all.length===1?"JOT":"JOTS"}</span>`;
-  back.onclick = renderLib;
+  back.innerHTML = `<span>&#8592; &nbsp;All jots</span><span class="sub">${visible.length.toLocaleString("en-US")} ${visible.length===1?"JOT":"JOTS"}</span>`;
+  back.onclick = () => enterRoute("library", renderLib, { returnToTimeline:true, focus:false });
   libBody.appendChild(back);
   /* his ask 8/28: leave the demo without navigating away from Patterns first.
      sits directly under All jots, and only while the demo is open. */
   if (demoActive()) libBody.appendChild(mkExitDemoRow());
 
+  const period = document.createElement("div"); period.className = "pattern-period";
+  for (const [value, text] of [["all","All time"],["year","This year"],["90d","90 days"]]){
+    const button = document.createElement("button"); button.type = "button";
+    button.textContent = text; button.className = value === patternPeriod ? "on" : "";
+    button.setAttribute("aria-pressed", String(value === patternPeriod));
+    button.onclick = () => { patternPeriod = value; renderStats(); };
+    period.appendChild(button);
+  }
+  libBody.appendChild(period);
+  const periodContext = document.createElement("div"); periodContext.className = "pattern-context";
+  periodContext.textContent = patternPeriod === "year" ? "Period · This year" :
+                              patternPeriod === "90d" ? "Period · Last 90 days" : "Period · All time";
+  libBody.appendChild(periodContext);
+
   if (!all.length){
     const e = document.createElement("div");
-    e.className = "empty"; e.textContent = "Nothing to read yet.";
+    e.className = "empty"; e.textContent = "No jots in this period.";
     libBody.appendChild(e); return;
   }
 
@@ -3887,10 +4083,10 @@ function renderStats(){
     libBody.appendChild(d);
   };
   stat("WORDS", totalWords.toLocaleString(), `${Math.round(totalWords/days.length)} / DAY`);
-  stat("DAYS WRITTEN", String(days.length), days[0] ? "SINCE " + days[0] : "");
+  stat("DAYS WRITTEN", String(days.length), days[0] ? "SINCE " + humanDate(days[0]) : "");
   stat("CURRENT STREAK", streak + (streak === 1 ? " DAY" : " DAYS"), "COUNTED BACK FROM TODAY");
   if (longest) stat("LONGEST PAUSE", dur(Math.round(longest)),
-                    longestAt ? "ENDED " + clk(longestAt) : "");
+                    longestAt ? "ENDED " + humanDate(longestAt) + " · " + clk(longestAt) : "");
 
   /* --- the two distributions --------------------------------------------- */
   const chart = (title, pairs, note, sub) => {
@@ -3911,7 +4107,7 @@ function renderStats(){
         const t = document.createElement("i"); t.textContent = sub[name]; sn.appendChild(t);
       }
       r.querySelector(".bar i").style.width = (n / max * 100).toFixed(1) + "%";
-      r.querySelector(".sc").textContent = n;
+      r.querySelector(".sc").textContent = n.toLocaleString("en-US") + " · " + percentOf(n, all.length);
       libBody.appendChild(r);
     }
     if (note){
@@ -3938,7 +4134,7 @@ function renderStats(){
   });
   chart("BY WINDOW",
         DAYPARTS.map(p => [showingFun() ? p[2] : p[1].toUpperCase(), byPart.get(p[1]) || 0]),
-        null, spans);
+        "Each window covers the same three hours, shown in clock order.", spans);
 }
 
 function renderJot(j){
@@ -3950,7 +4146,7 @@ function renderJot(j){
   const back = document.createElement("button");
   back.className = "mrow"; back.style.marginBottom = "6px";
   back.innerHTML = `<span>&#8592; &nbsp;All jots</span><span class="sub">${words(j)} ${words(j)===1?"WORD":"WORDS"}</span>`;
-  back.onclick = renderLib;
+  back.onclick = () => enterRoute("library", renderLib, { returnToTimeline:true, focus:false });
   libBody.appendChild(back);
 
   const vec = document.createElement("div");
@@ -4066,7 +4262,6 @@ ${j.paragraphs.length} timestamped ${j.paragraphs.length===1?"entry":"entries"}.
      last, under the entries, where a destructive act belongs. */
   if (!demoActive()) libBody.appendChild(del);
 }
-
 /* ★★★ S4 — IMPORT. There was an export and no way back in, which is what made
    every other storage failure PERMANENT rather than annoying. It is also the
    only way to merge the three separate stores he already has: file://,
@@ -4076,17 +4271,17 @@ ${j.paragraphs.length} timestamped ${j.paragraphs.length===1?"entry":"entries"}.
    ⚠ STRICTLY ADDITIVE, BY CONSTRUCTION. Merge by jot_id, union paragraphs by
    timestamp, and NEVER remove. A replace-all import is Clear-All wearing a
    different label, and he had Clear-All removed for exactly that reason. */
-function doImport(file){
+function doImport(file, notify=message => alert(message)){
   const r = new FileReader();
   r.onload = () => {
     let inc;
     try { inc = JSON.parse(r.result); }
-    catch { return alert("That file is not readable JSON. Nothing changed."); }
+    catch { return notify("That file is not readable JSON. Nothing changed."); }
     if (!inc || !Array.isArray(inc.jots))
-      return alert("That file has no jots in it. Nothing changed.");
+      return notify("That file has no jots in it. Nothing changed.");
 
     const st = load();
-    if (STORE_LOCKED) return alert("Writes are paused because the store is "
+    if (STORE_LOCKED) return notify("Writes are paused because the store is "
       + "damaged. Export first, then reload. Nothing changed.");
     /* Prompt definitions merge by immutable id. Local order and visibility
        always win; unknown imported definitions arrive hidden for review. */
@@ -4100,25 +4295,25 @@ function doImport(file){
       const cur = byId.get(j.jot_id);
       if (!cur){ st.jots.push(j); byId.set(j.jot_id, j); added++; continue; }
       /* same id: union the paragraphs on timestamp+text, keep both sides */
-      const seen = new Set(cur.paragraphs.map(p => p.ts + " " + p.text));
+      const seen = new Set(cur.paragraphs.map(p => p.ts + "\u0000" + p.text));
       let grew = false;
       for (const p of (j.paragraphs || [])){
-        const k = p.ts + " " + p.text;
+        const k = p.ts + "\u0000" + p.text;
         if (!seen.has(k)){ cur.paragraphs.push(p); seen.add(k); grew = true; }
       }
       if (grew){ cur.paragraphs.sort((a,b) => String(a.ts).localeCompare(String(b.ts))); merged++; }
     }
     if (!save(st)) return;              /* save() already told him why */
-    alert("Imported. " + added + " new, " + merged + " merged. "
+    notify("Imported. " + added + " new, " + merged + " merged. "
           + st.jots.length + " jots now on file. Nothing was removed.");
     renderLib();
   };
   r.readAsText(file);
 }
 
-function doExport(){
+function doExport(notify=message => alert(message)){
   const s = load();
-  if (!s.jots.length) return alert("Nothing to export yet.");
+  if (!s.jots.length){ notify("Nothing to export yet."); return false; }
   /* ⚠ STRIP CLIENT-ONLY KEYS. `_open`, `_resumed` and `_editing` are live UI
      state, not record - they were leaking into every export file and then into
      anything that read one. Underscore is the convention for "this belongs to
@@ -4138,6 +4333,7 @@ function doExport(){
   const d = new Date(), p2e = n => String(n).padStart(2,"0");
   a.download = `jot-export-${d.getFullYear()}-${p2e(d.getMonth()+1)}-${p2e(d.getDate())}.json`;
   a.click(); URL.revokeObjectURL(a.href);
+  return true;
 }
 
 /* ★★★ OFFLINE. The audit's worst-ranked gap: a CAPTURE app that needs a
@@ -4146,7 +4342,6 @@ function doExport(){
    ⚠ Registration is guarded and failure is silent on purpose - a service
    worker that cannot install (file:// , no HTTPS, an old browser) must never
    stop the app from opening. Offline is an upgrade, never a dependency. */
-
 /* ==========================================================================
    ACCOUNT - sign up, sign in, forgot password.
 
@@ -4699,7 +4894,7 @@ function freezeDemo(value){
 }
 
 async function startDemo(){
-  if (demoActive()){ lib.classList.add("on"); renderLib(); return { ok:"Demo open." }; }
+  if (demoActive()){ enterRoute("library", renderLib); return { ok:"Demo open." }; }
   const realBytes = localStorage.getItem(KEY);
   try {
     const response = await fetch("./demo/john-doe.json", { cache:"force-cache" });
@@ -4710,7 +4905,7 @@ async function startDemo(){
     DEMO_STORE = freezeDemo(payload);
     promptEditMode = false; promptAddMode = false; pendingHidePrompt = null;
     resetLibraryView(); paintDemoRow();
-    lib.classList.add("on"); renderLib();
+    enterRoute("library", renderLib);
     return { ok:"Jot Doe demo loaded." };
   } catch (error){
     DEMO_STORE = null;
@@ -4721,8 +4916,8 @@ async function startDemo(){
 function exitDemo(stayInLibrary=true){
   DEMO_STORE = null;
   resetLibraryView(); paintDemoRow();
-  if (stayInLibrary){ lib.classList.add("on"); renderLib(); }
-  else renderHome();
+  if (stayInLibrary) enterRoute("library", renderLib);
+  else enterRoute("write", renderHome);
 }
 
 async function entryGate(){
@@ -4742,7 +4937,14 @@ async function entryGate(){
 /* DATA is its own area now (ruled 8/28). It left the account page, which was
    three stacked cards in one scroll - the junk drawer reassembled in a new
    location - and took a drawer row of its own. */
-function renderData(){
+function setUnavailableRow(row, reason){
+  row.disabled = true;
+  row.classList.add("unavailable");
+  const sub = row.querySelector(".sub");
+  if (sub) sub.textContent = reason;
+}
+
+ function renderData(){
   paintNav("data");
   libBody.innerHTML = "";
   const grid = document.createElement("div"); grid.className = "acctwrap";
@@ -4752,6 +4954,9 @@ function renderData(){
   const nImp = s.jots.reduce((n, j) => n + (isImported(j) ? 1 : 0), 0);
   const data = document.createElement("div"); data.className = "acct";
   data.innerHTML = '<div class="lab">DATA</div>';
+  const dataStatus = document.createElement("div"); dataStatus.className = "data-status";
+  dataStatus.setAttribute("role", "status"); dataStatus.setAttribute("aria-live", "polite");
+  const report = message => { dataStatus.textContent = message; };
   const importButton = document.createElement("button"); importButton.className = "mrow";
   importButton.innerHTML = '<span>Import</span><span class="sub">MERGE A FILE IN</span>';
   const fileInput = document.createElement("input"); fileInput.type = "file";
@@ -4759,34 +4964,33 @@ function renderData(){
   importButton.onclick = () => fileInput.click();
   fileInput.onchange = event => {
     const file = event.target.files && event.target.files[0];
-    if (file) doImport(file);
+    if (file){ report("Importing your file..."); doImport(file, report); }
     event.target.value = "";
   };
   const exportButton = document.createElement("button"); exportButton.className = "mrow";
   exportButton.innerHTML = `<span>Export</span><span class="sub">${wAll ? wAll + (wAll === 1 ? " WORD" : " WORDS") : "NOTHING TO EXPORT YET"}</span>`;
-  exportButton.onclick = doExport;
-  if (!wAll){ exportButton.disabled = true; exportButton.style.opacity = ".45"; }
+  exportButton.onclick = () => { if (doExport(report)) report("Export ready in Downloads."); };
+  if (!wAll) setUnavailableRow(exportButton, "No jots to export yet");
   const archiveButton = document.createElement("button"); archiveButton.className = "mrow";
   archiveButton.innerHTML = '<span>Imported journals</span><span class="sub">' +
     (nImp ? (showImported() ? "SHOWING" : "HIDDEN") : "NONE IMPORTED") + '</span>';
-  if (!nImp){ archiveButton.disabled = true; archiveButton.style.opacity = ".45"; }
+  if (!nImp) setUnavailableRow(archiveButton, "No imported journals yet");
   else archiveButton.onclick = () => {
     localStorage.setItem(SHOW_IMPORTED, showImported() ? "0" : "1"); renderData();
   };
   /* the old "Start screen" row died with the start screen (his spec, 8/20) */
-  data.append(importButton, exportButton, fileInput, archiveButton);
+  data.append(importButton, exportButton, fileInput, archiveButton, dataStatus);
   if (demoActive()){
-    [importButton, exportButton, archiveButton].forEach(b => { b.disabled = true; });
-    importButton.querySelector(".sub").textContent = "OFF IN DEMO";
-    exportButton.querySelector(".sub").textContent = "OFF IN DEMO";
+    [importButton, exportButton, archiveButton].forEach(b => setUnavailableRow(b, "Unavailable in demo"));
   }
   /* ★ Trash. 30 days, restore or empty. */
   const binned = s.jots.filter(trashed);
   const trash = document.createElement("button"); trash.className = "mrow";
   trash.innerHTML = '<span>Trash</span><span class="sub">' +
     (binned.length ? binned.length + (binned.length===1?" JOT":" JOTS") + ", " + TRASH_DAYS + " DAYS" : "EMPTY") + '</span>';
-  if (!binned.length || demoActive()){ trash.disabled = true; trash.style.opacity = ".45"; }
-  else trash.onclick = () => renderTrash();
+  if (!binned.length) setUnavailableRow(trash, "Trash is empty");
+  else if (demoActive()) setUnavailableRow(trash, "Unavailable in demo");
+  else trash.onclick = () => enterRoute("trash", renderTrash);
   data.appendChild(trash);
   grid.appendChild(data);
 
@@ -4821,7 +5025,7 @@ function renderTrash(){
   card.innerHTML = '<div class="lab">TRASH</div>';
   const back = document.createElement("button"); back.className = "mrow";
   back.innerHTML = '<span>&#8592; &nbsp;Data</span><span class="sub">IMPORT AND EXPORT</span>';
-  back.onclick = renderData;
+  back.onclick = () => enterRoute("data", renderData, { focus:false });
   card.appendChild(back);
   const st = load(), binned = st.jots.filter(trashed);
   binned.forEach(j => {
@@ -4863,17 +5067,19 @@ function openAccount(){
         '<div class="note" id="aSyncNote"></div>' +
         '<button class="abtn pri" id="aSync">Sync now</button>' +
         '<button class="abtn" id="aOut">Sign out</button>'
-      : '<div class="note">Midnight Jot works with or without an account, which allows users to sync jots between devices.</div>' +
-        '<input class="ain" id="aEmail" type="email" placeholder="Email" autocomplete="username">' +
-        '<input class="ain" id="aPw" type="password" placeholder="Password" autocomplete="current-password">' +
+       : '<div class="note">Use an account to sync jots across your devices.</div>' +
+         '<label for="aEmail">Email</label>' +
+         '<input class="ain" id="aEmail" type="email" autocomplete="username">' +
+         '<label for="aPw">Password</label>' +
+         '<input class="ain" id="aPw" type="password" autocomplete="current-password">' +
         '<button class="abtn pri" id="aIn">Sign in</button>' +
         '<button class="abtn" id="aUp">Create account</button>' +
         /* the third door. .abtn, not .alink, so busy() disables it during an
            in-flight sign-in - and it wears Create account's exact tier, his
            call 8/28 after seeing the quieter version on screen. */
-        '<button class="abtn" id="aSkip">Continue without account</button>' +
+         '<button class="abtn quiet" id="aSkip">Continue without account</button>' +
         '<button class="alink" id="aForgot">Forgot password</button>') +
-    '<div class="amsg" id="aMsg"></div>';
+    '<div class="amsg" id="aMsg" role="status" aria-live="polite"></div>';
 
   libBody.innerHTML = "";
   const grid = document.createElement("div");
