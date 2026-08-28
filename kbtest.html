@@ -15,6 +15,11 @@
       font:16px/1.45 inherit}
  .pre{white-space:pre-wrap}
  .row{white-space:pre-wrap;min-height:22px}
+ /* jot's real row: the timestamp is CSS generated content INSIDE the editable */
+ .ts{position:relative;padding-left:70px}
+ .ts::before{content:attr(data-t);position:absolute;left:0;top:0;width:60px;
+   font-size:12px;font-weight:700;color:#8FA3B8;
+   user-select:none;-webkit-user-select:none;pointer-events:none}
 </style></head><body>
 <h1>Double-space test</h1>
 <p class="i">In each box: type <b>hello</b> then two spaces. If a period appears, that box passes. Test 0 first.</p>
@@ -33,4 +38,6 @@
 
 <div class="f"><b>4 &middot; same, plus autocapitalize=words</b>
   <div class="box" contenteditable="true" spellcheck="true" autocorrect="on" autocapitalize="words"><div class="row"></div></div></div>
+<div class="f"><b>5 &middot; jot's row PLUS the timestamp pseudo-element</b>
+  <div class="box" contenteditable="true" spellcheck="true" autocorrect="on"><div class="row ts" data-t="9:41AM"></div></div></div>
 </body></html>
