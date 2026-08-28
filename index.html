@@ -2748,7 +2748,18 @@ function composeToTop(){
   const latest = $("#jumpLatest");
   if (!rail || !first || !latest) return;
 
-  const refresh = () => {
+  /* ⚠⚠ COALESCED TO ONE FRAME. This reads scrollHeight, which forces a
+     synchronous layout - and it was firing from a MutationObserver watching
+     characterData, so it ran as a microtask immediately after EVERY character.
+     iOS performs autocorrect as a text substitution; forcing layout inside
+     that window is a plausible way to abort it (his report 8/28: double space
+     inserts no period in the app, but does in an identical test fixture that
+     has none of this). Nothing here needs to be synchronous - it only enables
+     two scroll buttons. */
+  let _rafid = 0;
+  const refresh = () => { if (!_rafid) _rafid = requestAnimationFrame(_refreshNow); };
+  const _refreshNow = () => {
+    _rafid = 0;
     const overflow = lines.scrollHeight > lines.clientHeight + 4;
     const end = Math.max(0, lines.scrollHeight - lines.clientHeight);
     rail.classList.toggle("ready", overflow);
@@ -2825,8 +2836,15 @@ function saveAndHome(){
    opening a category restores it. The draft is cleared the moment the jot
    itself is saved, so it can never resurrect old text over new. */
 const DRAFT = "jot.draft";
-const saveDraft = () => {
+/* ⚠ DEBOUNCED. This is a synchronous localStorage write and it ran on every
+   keystroke, blocking the main thread in the middle of typing. The safety it
+   provides is unchanged: beforeunload, visibilitychange and saveAndHome all
+   flush it immediately, so nothing survives less than it did. */
+let _draftT = 0;
+const saveDraft = (now) => {
   if (!live) return;
+  if (!now){ clearTimeout(_draftT); _draftT = setTimeout(() => saveDraft(true), 400); return; }
+  clearTimeout(_draftT);
   localStorage.setItem(DRAFT, JSON.stringify({
     cat: live.category, jot_id: live.jot_id,
     /* ⚠ no separate `typing` field any more. In the textarea model the
@@ -2844,8 +2862,8 @@ const readDraft = cat => {
     return d && d.cat === cat ? d : null;
   } catch { return null; }
 };
-window.addEventListener("beforeunload", saveDraft);
-document.addEventListener("visibilitychange", () => { if (document.hidden) saveDraft(); });
+window.addEventListener("beforeunload", () => saveDraft(true));
+document.addEventListener("visibilitychange", () => { if (document.hidden) saveDraft(true); });
 
 $("#done").addEventListener("click", saveAndHome);
 
