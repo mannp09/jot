@@ -2356,15 +2356,19 @@ function renderHome(){
       const carried = seed.value;
       seed.value = "";
       row.classList.add("on");
-      openPad(cat, row);
+      openPad(cat, row, true);
       /* ★ the carried keystrokes land in the LAST row of the new document,
          which openPad has already created empty. In the textarea model this
-         set the textarea value; now it writes into the paper itself. */
-      setTimeout(() => {
-        const last = lines.lastElementChild;
-        if (last){ last.textContent = carried; syncFromDom(); }
-        focusEnd();
-      }, 60);
+         set the textarea value; now it writes into the paper itself.
+         ★★ SYNCHRONOUS, and that is the whole fix (his report 8/28). The
+         keyboard is up for the seed input; opening the pad hides it, iOS
+         dismisses the keyboard, and a focus() 60ms later is outside the gesture
+         and cannot raise it again - so the handoff dropped him onto the pad
+         with no keyboard. Moving focus between two editables inside the SAME
+         event keeps it up. */
+      const last = lines.lastElementChild;
+      if (last){ last.textContent = carried; syncFromDom(); }
+      focusEnd();
     });
 
     const cnt = document.createElement("span");
@@ -2610,7 +2614,7 @@ function focusEnd(){
   lines.focus(); lines.scrollTop = lines.scrollHeight;
 }
 
-function openPad(cat, cardEl){
+function openPad(cat, cardEl, immediate){
   const now = new Date();
 
   /* ★★★ A JOT IS CONTINUOUS. His spec: "when loose is clicked again you can
@@ -2646,7 +2650,8 @@ function openPad(cat, cardEl){
     const q = lastCard.querySelector(".q");
     if (q) q.style.viewTransitionName = "promptline";
   }
-  const vt = morph(() => { home.style.display="none"; pad.classList.add("on"); });
+  const reveal = () => { home.style.display="none"; pad.classList.add("on"); };
+  const vt = immediate ? (reveal(), null) : morph(reveal);
   const clear = () => { if (!lastCard) return;
     lastCard.style.viewTransitionName = "";
     const q = lastCard.querySelector(".q"); if (q) q.style.viewTransitionName = ""; };
@@ -2686,10 +2691,13 @@ function openPad(cat, cardEl){
   const tail = rows0[rows0.length - 1];
   if (!tail || tail.textContent.trim()) lines.append(mkRow("", new Date()));
 
-  setTimeout(() => {
-    focusEnd();
-    composeToTop();
-  }, 60);
+  /* ⚠⚠ `immediate` skips the view transition, and it is not a style choice.
+     startViewTransition runs its callback ASYNCHRONOUSLY, so #pad is still
+     display:none on the next line - and focus() on a hidden element silently
+     does nothing. Any caller that needs the keyboard has to reveal the pad
+     synchronously and focus inside the same gesture. */
+  if (immediate){ focusEnd(); composeToTop(); return; }
+  setTimeout(() => { focusEnd(); composeToTop(); }, 60);
 }
 
 /* put the line he is about to type on at the TOP of the visible area.
@@ -2931,6 +2939,10 @@ scrim.addEventListener("click", closeDrawer);
 /* desktop keys. both are no-ops while he is typing - the pad, any input and any
    contenteditable own their own keystrokes. */
 document.addEventListener("keydown", e => {
+  /* ⚠ DESKTOP ONLY. This shipped listening on every surface, so a bare "n" on
+     a phone could navigate away from what he was doing. Shortcuts were asked
+     for on desktop; they stay there. */
+  if (drawerIsModal()) return;
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const t = e.target;
   if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
