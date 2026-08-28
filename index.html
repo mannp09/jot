@@ -366,6 +366,10 @@ header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
 @media (hover:hover){
   .drow:hover{background:color-mix(in srgb,var(--accent) 12%,transparent)}
 }
+.dbuild{font:inherit;font-size:10.5px;font-weight:700;letter-spacing:var(--tr-label);
+  text-transform:uppercase;color:var(--muted);background:none;border:0;padding:4px 2px;
+  text-align:left;cursor:default}
+.dbuild.new{color:var(--accent);cursor:pointer;text-decoration:underline}
 .dfoot{margin-top:auto;padding:14px 6px 2px;border-top:1.5px solid var(--rule);
   display:flex;flex-direction:column;gap:8px}
 .dwho{font-size:12px;font-weight:700;color:var(--muted);overflow-wrap:anywhere}
@@ -1577,6 +1581,11 @@ header,#padtop,#libtop{min-height:58px}
   <button class="drow" type="button" data-nav="demo" id="dDemo"><b>Demo <span class="dbadge" hidden>Active</span></b><span>Jot Doe, five years</span></button>
   <div class="dfoot">
     <div class="dwho" id="dWho"></div>
+    <!-- ★ the build, DERIVED from the service worker's own cache name rather
+         than typed - a hardcoded version is a second copy that drifts, and the
+         question this answers is "which build is actually serving me". Twice in
+         one day a stale cache sent us chasing a bug that was already fixed. -->
+    <button class="dbuild" id="dBuild" type="button" hidden></button>
     <!-- ★ the ONE sanctioned appearance of his name in this app (his ask, 8/20).
          The publish name-gate excludes exactly the data-about-credit line;
          keep the whole credit on that single line or the gate breaks.
@@ -4859,9 +4868,40 @@ function openAccount(){
 
 if ("serviceWorker" in navigator){
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
+    navigator.serviceWorker.register("sw.js").then(reg => {
+      /* a waiting worker means a newer build is downloaded and held back. say
+         so, and let one tap take it - the alternative is guessing from whether
+         a menu row exists, which is what we were reduced to. */
+      const offer = () => {
+        const b = document.getElementById("dBuild");
+        if (!b || !reg.waiting) return;
+        b.classList.add("new");
+        b.textContent = "New version · tap to update";
+        b.onclick = () => { reg.waiting.postMessage("skip"); location.reload(); };
+      };
+      offer();
+      reg.addEventListener("updatefound", () => {
+        const w = reg.installing;
+        if (w) w.addEventListener("statechange", offer);
+      });
+    }).catch(() => {});
   });
 }
+
+/* the build line. read from the live cache name, so it cannot disagree with the
+   app that is actually being served. */
+(async () => {
+  const b = document.getElementById("dBuild");
+  if (!b || !window.caches) return;
+  try {
+    const k = (await caches.keys()).find(n => n.startsWith("jot-shell-"));
+    if (!k) return;
+    b.hidden = false;
+    /* an update offer outranks the build number - both write this one line and
+       the offer is the one that needs acting on. */
+    if (!b.classList.contains("new")) b.textContent = "BUILD " + k.replace("jot-shell-", "");
+  } catch {}
+})();
 
 /* ★★★ ASK THE BROWSER NOT TO EVICT THIS DATA.
    Without durable storage, localStorage is "best effort": a browser under disk

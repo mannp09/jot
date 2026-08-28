@@ -12,7 +12,7 @@
 /* ⚠ v2: the manifest was missing from v1's shell list because the manifest
    itself was missing. An installed app that cannot fetch its own manifest
    offline is the same half-feature one layer down. */
-const CACHE = "jot-shell-v99";
+const CACHE = "jot-shell-v100";
 const SHELL = ["./", "./index.html", "./manifest.json",
                "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 
@@ -22,6 +22,10 @@ self.addEventListener("install", e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).catch(() => {}));
 });
+
+/* the page asks for the new build; without this a waiting worker sits until
+   every tab is gone, which on a phone can be days. */
+self.addEventListener("message", e => { if (e.data === "skip") self.skipWaiting(); });
 
 self.addEventListener("activate", e => {
   e.waitUntil(
