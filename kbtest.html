@@ -1,0 +1,36 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Keyboard test</title>
+<style>
+ :root{color-scheme:dark}
+ body{margin:0;padding:18px;background:#141A22;color:#F4EFE4;
+      font:16px/1.5 -apple-system,system-ui,sans-serif}
+ h1{font-size:17px;margin:0 0 4px}
+ p.i{margin:0 0 18px;color:#8FA3B8;font-size:13.5px}
+ .f{margin:0 0 16px}
+ .f b{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;
+      color:#8FA3B8;margin-bottom:5px}
+ .box,textarea{width:100%;box-sizing:border-box;min-height:46px;padding:10px 12px;
+      border:1px solid #304963;border-radius:8px;background:#1C2431;color:#F4EFE4;
+      font:16px/1.45 inherit}
+ .pre{white-space:pre-wrap}
+ .row{white-space:pre-wrap;min-height:22px}
+</style></head><body>
+<h1>Double-space test</h1>
+<p class="i">In each box: type <b>hello</b> then two spaces. If a period appears, that box passes. Test 0 first.</p>
+
+<div class="f"><b>0 &middot; textarea (the control)</b>
+  <textarea rows="2"></textarea></div>
+
+<div class="f"><b>1 &middot; plain contenteditable</b>
+  <div class="box" contenteditable="true"></div></div>
+
+<div class="f"><b>2 &middot; contenteditable + pre-wrap</b>
+  <div class="box pre" contenteditable="true"></div></div>
+
+<div class="f"><b>3 &middot; jot's exact structure</b>
+  <div class="box" contenteditable="true" spellcheck="true" autocorrect="on"><div class="row"></div></div></div>
+
+<div class="f"><b>4 &middot; same, plus autocapitalize=words</b>
+  <div class="box" contenteditable="true" spellcheck="true" autocorrect="on" autocapitalize="words"><div class="row"></div></div></div>
+</body></html>
