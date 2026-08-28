@@ -3062,7 +3062,7 @@ const GROUPINGS = {
    collapsed except today" could not be expressed at all. `seeded` tracks
    whether the current chain has been planted for this grouping yet. */
 let libView = { group:"day", cat:"all", part:"all", q:"",
-                open:new Set(), seeded:null, groupAuto:true,
+                open:new Set(), more:new Map(), seeded:null, groupAuto:true,
                 sections:libraryInitialSections(false) };
 
 /* ★★★ THE DEFAULT GROUPING IS DERIVED FROM THE CORPUS, NOT HARD CODED.
@@ -3397,6 +3397,7 @@ function renderLib(){
   if (libView.seeded !== libView.group){
     libView.seeded = libView.group;
     currentChain(G.level).forEach(p => libView.open.add(p));
+    libView.more.clear();
   }
 
   const cap = document.createElement("div");
@@ -3519,6 +3520,23 @@ function renderLib(){
   const wordsOf = rows => rows.reduce((a, j) => a + words(j), 0);
 
   /* recurse down the chain from the chosen level to `day`, then the jots */
+  /* ★ a leaf paints PAGE_ROWS at a time. Expanding a month with hundreds of
+     jots used to build every row before the browser painted anything - the
+     demo does 2,608. The rest arrive on a tap, and the tap costs one page. */
+  const PAGE_ROWS = 60;
+  function paintLeaf(rows, kid, p){
+    const shown = libView.more.get(p) || PAGE_ROWS;
+    rows.slice(0, shown).forEach(j => kid.appendChild(jotRow(j)));
+    const left = rows.length - shown;
+    if (left <= 0) return;
+    const more = document.createElement("button");
+    more.type = "button"; more.className = "mrow";
+    more.innerHTML = '<span>Show more</span><span class="sub">' + left +
+      (left === 1 ? " MORE JOT" : " MORE JOTS") + '</span>';
+    more.onclick = () => { libView.more.set(p, shown + PAGE_ROWS); renderLib(); };
+    kid.appendChild(more);
+  }
+
   function walk(rows, li, path, depth, container){
     const level = CHAIN[li];
     const buckets = new Map();
@@ -3541,7 +3559,7 @@ function renderLib(){
       kid.className = "kids d" + depth;
       container.appendChild(kid);
       if (li < CHAIN.length - 1) walk(node.rows, li + 1, p, depth + 1, kid);
-      else node.rows.forEach(j => kid.appendChild(jotRow(j)));
+      else paintLeaf(node.rows, kid, p);
     }
   }
 
@@ -4554,6 +4572,7 @@ setInterval(function(){ syncSchedule(1); }, 10 * 60 * 1000);
 
 function resetLibraryView(){
   libView.group = "day"; libView.cat = "all"; libView.part = "all"; libView.q = "";
+  libView.more.clear();
   libView.open = new Set(); libView.seeded = null; libView.groupAuto = true;
   libView.sections = libraryInitialSections(demoActive());
 }
