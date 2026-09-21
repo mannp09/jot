@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-build="v102">
+<html lang="en" data-build="v103">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
@@ -44,6 +44,36 @@ function iosKbHas(flag){ return IOS_KB_FLAGS.has(flag); }
   const root = document.documentElement;
   for (const flag of IOS_KB_FLAGS) root.classList.add("ioskb-" + flag);
   window.JotIosKb = { flags:IOS_KB_FLAGS, has:iosKbHas };
+})();
+</script>
+<script>
+/* SAVE_STATUS_PURE_START */
+function saveStatusTransition(current, kind, detail){
+  if (kind === "save" && detail.state === "error")
+    return {state:"error", message:"Not saved. Keep this page open.", saveFailed:true};
+  if (kind === "save" && detail.state === "saved")
+    return {state:"saved", message:"Saved on device", saveFailed:false, durable:true};
+  if (current.saveFailed) return current;
+  const localNote = current.durable ? ". Saved on device." : "";
+  const labels = {syncing:"Syncing", synced:"Synced", offline:"Offline" + localNote,
+    error:"Sync paused" + localNote};
+  if (kind !== "sync" || !labels[detail.state]) return current;
+  return {state:detail.state, message:labels[detail.state], saveFailed:false, durable:!!current.durable};
+}
+/* SAVE_STATUS_PURE_END */
+(function(){
+  let current = {state:"local", message:"On this device", saveFailed:false};
+  function paint(){
+    document.querySelectorAll("[data-save-status]").forEach(el => {
+      if (el.textContent !== current.message) el.textContent = current.message;
+      el.dataset.state = current.state;
+    });
+  }
+  ["save", "sync"].forEach(kind => document.addEventListener("jot-" + kind + "-state", event => {
+    current = saveStatusTransition(current, kind, event.detail || {});
+    paint();
+  }));
+  document.addEventListener("DOMContentLoaded", paint, {once:true});
 })();
 </script>
 <script>
@@ -103,7 +133,7 @@ function nextTheme(value){ return normalizeTheme(value) === "dark" ? "light" : "
   time buckets, all derived from one timestamp. The detail view shows that
   address, which is the whole argument for the schema in one screen.
 
-  ⚠ The day parts here MUST stay identical to DAYPARTS in 6-Scripts/jot_schema.py
+  ⚠ The day parts here MUST stay identical to DAYPARTS in 6-Scripts/jot/jot_schema.py
   or the client and the database will disagree about what midday means.
 
   ★★ EIGHT BUCKETS OF THREE HOURS, on his instruction 2026-08-14: "more
@@ -258,6 +288,20 @@ header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
   font-size:var(--f4);line-height:1;cursor:pointer;display:flex;
   align-items:center;justify-content:center}
 .iconbtn:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.save-strip{display:flex;justify-content:space-between;align-items:start;gap:12px;
+  min-height:28px;flex:0 0 auto;padding:0 2px 8px;font-size:11px;font-weight:700;
+  color:var(--muted);line-height:1.5}
+[data-save-status]{min-width:0;overflow-wrap:anywhere}
+[data-save-status]::before{content:"";display:inline-block;width:5px;height:5px;
+  border-radius:50%;margin-right:7px;background:currentColor;vertical-align:middle}
+[data-save-status][data-state="synced"],[data-save-status][data-state="saved"]{color:var(--accent)}
+[data-save-status][data-state="error"]{color:var(--ink);font-weight:800}
+.pad-tools{display:flex;justify-content:flex-end;flex:0 0 auto;padding:0 12px;
+  border-bottom:1px solid var(--rule)}
+.typing-option{display:inline-flex;align-items:center;gap:8px;min-height:44px;
+  font-size:11px;font-weight:700;color:var(--muted);cursor:pointer}
+.typing-option input{width:17px;height:17px;accent-color:var(--accent)}
+.typing-option:focus-within{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
 .burger{display:flex;flex-direction:column;gap:4px}
 .burger i{display:block;width:17px;height:2px;background:currentColor;border-radius:2px}
 
@@ -504,7 +548,6 @@ html.ioskb-nobidi #lines{unicode-bidi:normal!important}
             padding-inline:clamp(24px,4vw,72px)}
   .card .q{font-size:var(--f4)}
 }
-
 /* ---------------------------------------------------------- the checklist ---
    His layout: a list, a box on the left, the question beside it, tap or type
    to maximise, save and you are back. Deliberately ONE colour - he said the
@@ -686,6 +729,35 @@ html.ioskb-nobidi #lines{unicode-bidi:normal!important}
 .kids.d1,.kids.d2,.kids.d3{margin-left:8px;padding-left:8px}
 #libbody{overflow-x:hidden}
 
+/* Repeatable, decorative accents. Only the extra line moves, never text. */
+.jot-motion-line{position:relative}
+.jot-motion-line::after{content:"";position:absolute;pointer-events:none;
+  inset:auto 0 0;height:1px;background:linear-gradient(90deg,transparent,var(--accent));
+  transform:scaleX(0);transform-origin:left;opacity:0}
+.jot-motion-line.jot-motion-play::after{animation:jot-line-arrive .7s ease-out both}
+@keyframes jot-line-arrive{
+  0%{transform:scaleX(0);opacity:0}
+  18%{opacity:.7}
+  72%{transform:scaleX(1);opacity:.7}
+  100%{transform:scaleX(1);opacity:0}
+}
+#deck .task:not(.manage-task){transition:background-color .18s ease,box-shadow .18s ease}
+#deck .task:not(.manage-task):focus-within{
+  background:color-mix(in srgb,var(--accent) 7%,transparent);
+  box-shadow:inset 0 -1px 0 var(--accent)}
+@media (hover:hover) and (pointer:fine){
+  #deck .task:not(.manage-task):hover{
+    background:color-mix(in srgb,var(--accent) 7%,transparent);
+    box-shadow:inset 0 -1px 0 var(--accent)}
+  #libbody :is(.jrow,.gmain,.libsection > summary):hover{
+    background:color-mix(in srgb,var(--accent) 6%,transparent)}
+}
+#libbody :is(.jrow,.gmain,.libsection > summary):focus-visible{
+  background:color-mix(in srgb,var(--accent) 6%,transparent)}
+@media (prefers-reduced-motion:reduce){
+  .jot-motion-line::after{animation:none !important;transform:none;opacity:0}
+  #deck .task:not(.manage-task){transition:none}
+}
 /* ---------------------------------------------------------- the notepad ---
    ★ The red margin runs the full height of the writing area at exactly the
    gutter width, so the timestamps sit in the margin the way a date does on
@@ -1170,7 +1242,15 @@ body::before{
    there is simply no scroll range left. 72vh of empty paper below the caret
    buys that range, AND it is what stops the phone keyboard from sitting on
    the line he is typing, which is the clipping in his screenshot. */
-#lines{padding-bottom:72vh}
+/* Keep this breathing room inside the scroll range, not the flex box's
+   minimum padding. The old padding forced short screens beyond the viewport. */
+#lines{min-height:0;padding-bottom:0}
+#lines::after{content:"";display:block;height:72vh;pointer-events:none}
+/* In a keyboard-sized viewport the edge buttons overlap the typing option.
+   Native paper scrolling remains available, with no floating obstruction. */
+@media (max-height:500px){
+  #pad .scrollrail{display:none}
+}
 
 /* ★ TAP TO RAISE THE CONTROLS. His words: "when i tap screen my options need
    to come up - when i get to bottom it does this."
@@ -1219,7 +1299,6 @@ body::before{
     gap:10px;padding:0 0 12px}
   .flab{padding:0}
 }
-
 /* ★ fills the page since 8/20 ("account screen to fill the width") - on
    desktop the auth half and the data half sit side by side across the 920.
    ★ ONE spacing rhythm between the three sections (his fix, 8/20): the grid
@@ -1597,6 +1676,7 @@ header,#padtop,#libtop{min-height:58px}
       <svg class="ic theme-sun" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"/></svg>
     </button>
   </header>
+  <div class="save-strip"><span data-save-status role="status" aria-live="polite" aria-atomic="true" title="Status of completed jots">On this device</span></div>
 
   <main id="home" aria-hidden="false"></main>
 
@@ -1605,13 +1685,16 @@ header,#padtop,#libtop{min-height:58px}
       <div id="padq"><div class="pcat" id="pcat"></div><div class="pq" id="pq"></div></div>
       <button class="iconbtn" id="done" aria-label="Save this jot">DONE</button>
     </div>
+    <div class="pad-tools"><label class="typing-option" title="Optional English typing shortcut: two spaces make a period, then capitalize the next letter."><input type="checkbox" id="typingAssist">Double-space period</label></div>
     <div class="ioskb-badge" id="ioskbBadge" role="status" hidden></div>
     <!-- autocorrect="on" opts in explicitly; WebKit's contenteditable default
          is not guaranteed to match its <input> default. autocapitalize is
          deliberately ABSENT - no value means "defer to the keyboard", and
          "sentences" would force a capital onto fragment answers that are
-         legitimately lowercase (ruled 8/28). -->
-    <div id="lines" contenteditable="true" spellcheck="true" autocorrect="on"
+         legitimately lowercase (ruled 8/28).
+         September 20 amendment: Mann now requests sentence capitalization.
+         This platform hint does not rewrite existing words. -->
+    <div id="lines" contenteditable="true" spellcheck="true" autocorrect="on" autocapitalize="sentences"
          role="textbox" aria-multiline="true" aria-label="Jot text"></div>
     <nav class="scrollrail" id="scrollrail" aria-label="Move through this jot">
       <button type="button" id="jumpFirst" aria-label="Go to first jot"></button>
@@ -1638,6 +1721,7 @@ header,#padtop,#libtop{min-height:58px}
       <svg class="ic theme-sun" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"/></svg>
     </button>
   </div>
+  <div class="save-strip"><span data-save-status role="status" aria-live="polite" aria-atomic="true" title="Status of completed jots">On this device</span></div>
   <div id="libbody"></div>
 </section>
 
@@ -1728,7 +1812,7 @@ const KEY = "jot.v1";
    ⚠ Noon is now a BOUNDARY, reversing the earlier straddle. Before lunch and
    after lunch are genuinely different states, and the straddle only existed to
    paper over having seven uneven buckets.
-   ⚠ Must stay identical to DAYPARTS in 6-Scripts/jot_schema.py.
+   ⚠ Must stay identical to DAYPARTS in 6-Scripts/jot/jot_schema.py.
    [startMinute, generic, fun] --------------------------------------------- */
 const DAYPARTS = [
   [   0, "late",       "Midnight Margin" ],   // 00:00 - 02:59
@@ -1890,7 +1974,7 @@ const _loadRaw = () => {
   return splitMigrate(s);
 };
 
-const save = s => {
+const save = (s, options={}) => {
   if (demoActive()) return false;
   if (STORE_LOCKED){ bannerUp(); return false; }
   try {
@@ -1902,7 +1986,7 @@ const save = s => {
     /* sync is a LISTENER on the single writer, never a second writer: a
        successful save only schedules a background flush. Nothing here blocks
        or throws - capture must not know the network exists. */
-    if (typeof syncSchedule === "function") syncSchedule();
+    if (options.sync !== false && typeof syncSchedule === "function") syncSchedule();
     return true;
   } catch (e){
     /* ⚠⚠ S6 — QUOTA. Identity confirmed in-browser: QuotaExceededError,
@@ -2218,6 +2302,26 @@ function mergePromptDeck(localDeck, importedDeck){
 }
 /* PROMPT_DECK_PURE_END */
 
+/* SEED_HANDOFF_PURE_START */
+/* Keep an IME on the seed input until it commits. The old first-input handoff
+   changed editable surfaces mid-composition, which could drop the candidate.
+   The completed value still enters the pad synchronously and takes the normal
+   draft-autosave path exactly once. */
+function bindSeedHandoff(seed, handoff){
+  let composing = false, handedOff = false;
+  const carry = event => {
+    if (handedOff || composing || (event && event.isComposing)) return;
+    const value = seed.value;
+    if (!value) return;
+    handedOff = true;
+    handoff(value);
+  };
+  seed.addEventListener("compositionstart", () => { composing = true; });
+  seed.addEventListener("compositionend", event => { composing = false; carry(event); });
+  seed.addEventListener("input", carry);
+}
+/* SEED_HANDOFF_PURE_END */
+
 /* One canonical built-in registry feeds both the legacy classifier and the
    configurable Home deck, so prompt wording and labels cannot drift. */
 const PROMPTS = Object.fromEntries(BUILTIN_PROMPT_IDS.map(id => [id, BUILTIN_PROMPT_DEFINITIONS[id].prompt]));
@@ -2396,6 +2500,11 @@ function renderPromptForm(){
 }
 
 function renderHome(){
+  /* The visible surface and router state are one transition. Done used to
+     paint Home while leaving `activeRoute = "pad"`, so opening then closing
+     the menu resurrected an empty pad with live already cleared. */
+  activeRoute = "write";
+  if (window.JotTypingAssist) window.JotTypingAssist.reset();
   paintNav("write");
   showView("write"); live=null;
   home.innerHTML = "";
@@ -2503,8 +2612,7 @@ function renderHome(){
     /* ★ HIS TOUCH, AND IT IS THE GOOD ONE: start typing on the row and it
        maximises with the characters already carried through. The handoff is
        the whole trick - drop the first keystrokes and it feels broken. */
-    seed.addEventListener("input", () => {
-      const carried = seed.value;
+    bindSeedHandoff(seed, carried => {
       seed.value = "";
       row.classList.add("on");
       openPad(cat, row, true);
@@ -2603,6 +2711,7 @@ function renderHome(){
     fab.addEventListener("click", () => openPad("plus", null));
     home.appendChild(fab);
   }
+  if (typeof refreshHomeMotion === "function") refreshHomeMotion(deck);
 }
 
 /* run a DOM change inside a view transition, or plainly if the browser cannot
@@ -2647,9 +2756,6 @@ function todaysEntries(cat){
    ⚠ THE STAMP NEVER MOVES. Editing a thought does not change when you had it,
    and re-stamping would quietly corrupt gap_s, the one measurement this app
    exists for. */
-
-
-
 /* ------------------------------------------------------------ the pad ---
    ★★★ ONE contenteditable region. Rows are its children. The caret crosses
    them, so selection, cut, copy, paste and undo are all the browser's own
@@ -2660,6 +2766,135 @@ function todaysEntries(cat){
    appear in a copy. A timestamp rendered as real text would end up in every
    paste, which is exactly the "why is it copying" he hit. */
 const lines = $("#lines");
+
+/* ★★★ OPTIONAL LOCAL TYPING ASSIST, added 2026-09-20.
+   The cause of iPhone Chrome failing to apply its own double-space replacement
+   is still UNKNOWN. This does not pretend otherwise and it does not replace
+   native editing globally. It is off by default and only handles one proven,
+   narrow sequence: two ordinary space insertions at the same collapsed text
+   caret after a word character. Paste, dictation, replacement text, IME input,
+   undo/redo and uncertain selection states remain entirely native.
+
+   `execCommand("insertText")` is used deliberately because it is the browser
+   editing operation that can join the native undo history. Desktop synthetic
+   tests prove the gate and selection behavior; undo grouping and capitalization
+   still require physical iPhone acceptance before this can be called certified. */
+const TYPING_ASSIST_KEY = "jot.typingAssist";
+window.JotTypingAssist = (() => {
+  let pendingSpace = null, capitalBoundary = null, composing = false;
+
+  const enabled = () => localStorage.getItem(TYPING_ASSIST_KEY) === "1";
+  const reset = () => { pendingSpace = null; capitalBoundary = null; };
+  const point = () => {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount !== 1 || !sel.isCollapsed ||
+        sel.anchorNode !== sel.focusNode || !sel.anchorNode || sel.anchorNode.nodeType !== 3)
+      return null;
+    const row = sel.anchorNode.parentElement && sel.anchorNode.parentElement.closest(".row");
+    if (!row) return null;
+    return { sel, node:sel.anchorNode, row, offset:sel.anchorOffset };
+  };
+  const samePoint = (mark, here) => !!mark && !!here &&
+    mark.node === here.node && mark.row === here.row && mark.offset === here.offset;
+  const insertTextSupported = () => {
+    try {
+      return typeof document.execCommand === "function" &&
+        typeof document.queryCommandSupported === "function" &&
+        document.queryCommandSupported("insertText");
+    } catch { return false; }
+  };
+  const replaceText = (here, start, end, text) => {
+    if (!insertTextSupported()) return false;
+    const range = document.createRange();
+    range.setStart(here.node, start); range.setEnd(here.node, end);
+    here.sel.removeAllRanges(); here.sel.addRange(range);
+    let inserted = false;
+    try { inserted = document.execCommand("insertText", false, text); }
+    catch { inserted = false; }
+    if (!inserted){
+      const restore = document.createRange();
+      restore.setStart(here.node, here.offset); restore.collapse(true);
+      here.sel.removeAllRanges(); here.sel.addRange(restore);
+    }
+    return inserted;
+  };
+  const wordCharacter = value => /[\p{L}\p{N}]/u.test(value || "");
+  const letter = value => /\p{L}/u.test(value || "");
+
+  const onBeforeInput = event => {
+    if (!enabled() || composing || event.isComposing){ reset(); return; }
+    /* If the browser says this event cannot be cancelled, do not touch the
+       DOM. Otherwise native insertion would still run after our replacement
+       and duplicate punctuation or capitalization. */
+    if (event.cancelable === false){ reset(); return; }
+    if (event.inputType !== "insertText" || typeof event.data !== "string" || event.data.length !== 1){
+      reset(); return;
+    }
+    const here = point();
+    if (!here){ reset(); return; }
+
+    if (event.data === " " && samePoint(pendingSpace, here) &&
+        here.node.textContent.charAt(here.offset - 1) === " " &&
+        wordCharacter(here.node.textContent.charAt(here.offset - 2))){
+      pendingSpace = null; capitalBoundary = null;
+      if (replaceText(here, here.offset - 1, here.offset, ". ")){
+        event.preventDefault();
+        const after = point();
+        if (after) capitalBoundary = { node:after.node, row:after.row, offset:after.offset };
+      }
+      return;
+    }
+
+    if (samePoint(capitalBoundary, here) && letter(event.data) &&
+        event.data === event.data.toLowerCase() && event.data !== event.data.toUpperCase()){
+      reset();
+      if (replaceText(here, here.offset, here.offset, event.data.toUpperCase())) event.preventDefault();
+      return;
+    }
+    reset();
+  };
+
+  const onInput = event => {
+    if (!enabled() || composing || event.isComposing ||
+        event.inputType !== "insertText" || event.data !== " ") { reset(); return; }
+    const here = point();
+    if (!here || here.node.textContent.charAt(here.offset - 1) !== " " ||
+        !wordCharacter(here.node.textContent.charAt(here.offset - 2))) { reset(); return; }
+    pendingSpace = { node:here.node, row:here.row, offset:here.offset };
+    capitalBoundary = null;
+  };
+
+  const setEnabled = value => {
+    localStorage.setItem(TYPING_ASSIST_KEY, value ? "1" : "0");
+    reset();
+    const toggle = $("#typingAssist");
+    if (toggle) toggle.checked = !!value;
+  };
+
+  lines.addEventListener("beforeinput", onBeforeInput);
+  if (!iosKbHas("noinput")) lines.addEventListener("input", onInput);
+  lines.addEventListener("compositionstart", () => { composing = true; reset(); });
+  lines.addEventListener("compositionend", () => { composing = false; reset(); });
+  for (const type of ["paste", "drop", "blur"]) lines.addEventListener(type, reset);
+  lines.addEventListener("keydown", event => {
+    if (["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End","PageUp","PageDown",
+         "Backspace","Delete","Enter","Tab","Escape"].includes(event.key) ||
+        ((event.metaKey || event.ctrlKey) && ["z","y"].includes(String(event.key).toLowerCase()))) reset();
+  });
+  document.addEventListener("selectionchange", () => {
+    const here = point();
+    if (pendingSpace && !samePoint(pendingSpace, here)) pendingSpace = null;
+    if (capitalBoundary && !samePoint(capitalBoundary, here)) capitalBoundary = null;
+  });
+  document.addEventListener("visibilitychange", () => { if (document.hidden) reset(); });
+
+  const toggle = $("#typingAssist");
+  if (toggle){
+    toggle.checked = enabled();
+    toggle.addEventListener("change", () => setEnabled(toggle.checked));
+  }
+  return { enabled, setEnabled, reset };
+})();
 
 function mkRow(text, ts, jid){
   const d = document.createElement("div");
@@ -2740,7 +2975,11 @@ function handlePadEnter(e){
 }
 if (!iosKbHas("noenter")) lines.addEventListener("keydown", handlePadEnter);
 
-function reconcileInput(){
+let _padComposing = false;
+function reconcileInput(event){
+  /* An IME owns its temporary DOM until compositionend. Snapshot it for draft
+     recovery, but do not replace its native nodes while it is still composing. */
+  if (_padComposing || (event && event.isComposing)){ syncFromDom(); return; }
   /* a paste or a delete can leave bare divs or text nodes; re-home them */
   [...lines.childNodes].forEach(n => {
     if (n.nodeType === 3 && n.textContent.trim()){
@@ -2753,10 +2992,16 @@ function reconcileInput(){
   syncFromDom();
 }
 if (!iosKbHas("noinput")) lines.addEventListener("input", reconcileInput);
+lines.addEventListener("compositionstart", () => { _padComposing = true; });
+lines.addEventListener("compositionend", () => {
+  _padComposing = false;
+  if (iosKbHas("noinput")) flushDraftFromDom(); else reconcileInput();
+});
 
 /* ★ paste arrives as plain text, always. A pasted <b> or a colour from another
    app would be the one thing that makes this stop looking like paper. */
 lines.addEventListener("paste", e => {
+  window.JotTypingAssist.reset();
   e.preventDefault();
   const txt = (e.clipboardData || window.clipboardData).getData("text/plain");
   const parts = txt.split(/\r?\n/).filter(x => x.length);
@@ -2785,12 +3030,18 @@ function drawLines(){
 function focusEnd(){
   const last = lines.lastElementChild; if (!last) return;
   const r = document.createRange(), sel = window.getSelection();
-  r.selectNodeContents(last); r.collapse(false);
+  let target = last.childNodes[last.childNodes.length - 1];
+  if (!target || target.nodeType !== 3){
+    target = document.createTextNode("");
+    last.appendChild(target);
+  }
+  r.setStart(target, target.textContent.length); r.collapse(true);
   sel.removeAllRanges(); sel.addRange(r);
   lines.focus(); lines.scrollTop = lines.scrollHeight;
 }
 
 function openPad(cat, cardEl, immediate){
+  window.JotTypingAssist.reset();
   const now = new Date();
   activeRoute = "pad";
 
@@ -2975,7 +3226,12 @@ function composeToTop(){
 function saveAndHome(){
   syncFromDom();
   if (live && live.paragraphs.length){
-    const st = load();
+    /* Flush the recoverable draft before the durable write attempt, then edit
+       a detached copy. load() returns a cached object; mutating it before a
+       failed save would make memory claim rows were committed when disk had
+       refused them. */
+    const draftSaved = saveDraft(true);
+    const st = JSON.parse(JSON.stringify(load()));
     /* ★★ ONE ROW, ONE JOT. Each line is upserted as its own record: a row that
        already carries a jid updates in place, a new row becomes a new jot.
        ⚠ Rows he DELETED in the pad are removed too - they were entries of this
@@ -3002,10 +3258,25 @@ function saveAndHome(){
       const i = st.jots.findIndex(j => j.jot_id === rec.jot_id);
       if (i >= 0) st.jots[i] = { ...st.jots[i], ...rec }; else st.jots.push(rec);
     }
-    save(st);
+    if (!save(st)){
+      document.dispatchEvent(new CustomEvent("jot-save-state", { detail:{
+        state:"error", message:draftSaved
+          ? "Save failed. Your draft is still in this editor."
+          : "Save failed, and the current draft could not be updated. Keep this page open and copy your text before leaving."
+      }}));
+      return false;
+    }
+    if (typeof syncSchedule === "function") syncSchedule(0);
+    clearDraft();
+    renderHome();
+    document.dispatchEvent(new CustomEvent("jot-save-state", { detail:{
+      state:"saved", message:"Saved on this device."
+    }}));
+    return true;
   }
   clearDraft();
   renderHome();
+  return true;
 }
 
 /* ★★★ AUTOSAVE. A CAPTURE TOOL THAT LOSES WHAT YOU TYPED IS BROKEN.
@@ -3027,18 +3298,26 @@ const DRAFT = "jot.draft";
    flush it immediately, so nothing survives less than it did. */
 let _draftT = 0;
 const saveDraft = (now) => {
-  if (!live) return;
-  if (!now){ clearTimeout(_draftT); _draftT = setTimeout(() => saveDraft(true), 400); return; }
+  if (!live) return false;
+  if (!now){ clearTimeout(_draftT); _draftT = setTimeout(() => saveDraft(true), 400); return true; }
   clearTimeout(_draftT);
-  localStorage.setItem(DRAFT, JSON.stringify({
-    cat: live.category, jot_id: live.jot_id,
-    /* ⚠ no separate `typing` field any more. In the textarea model the
-       half typed line lived outside live.paragraphs and had to be saved
-       alongside it. Now every row IS a paragraph the moment it exists, so
-       the draft is just the paragraphs and there is nothing to lose. */
-    paragraphs: live.paragraphs,
-    at: iso(new Date())
-  }));
+  try {
+    localStorage.setItem(DRAFT, JSON.stringify({
+      cat: live.category, jot_id: live.jot_id,
+      /* ⚠ no separate `typing` field any more. In the textarea model the
+         half typed line lived outside live.paragraphs and had to be saved
+         alongside it. Now every row IS a paragraph the moment it exists, so
+         the draft is just the paragraphs and there is nothing to lose. */
+      paragraphs: live.paragraphs,
+      at: iso(new Date())
+    }));
+    return true;
+  } catch {
+    /* Quota/private-mode failures must not throw out of input, lifecycle, or
+       Done. Done checks this return value and reports when durable save also
+       fails, while still attempting the main store write independently. */
+    return false;
+  }
 };
 function flushDraftFromDom(){
   if (!live) return;
@@ -3070,8 +3349,6 @@ $("#done").addEventListener("click", saveAndHome);
    stamp rather than stamping it now, because the thought happened when it
    happened. Re-stamping would quietly corrupt gap_s, which is the one number
    this app exists to measure. */
-
-
 /* ------------------------------------------------------------- library --- */
 function words(j){ return j.paragraphs.reduce((a,p) =>
   a + p.text.trim().split(/\s+/).filter(Boolean).length, 0); }
@@ -4366,6 +4643,48 @@ function doExport(notify=message => alert(message)){
 const SB_URL = "https://owphqpacelnblfvwxutl.supabase.co";
 const SB_KEY = "sb_publishable_866fMRZi0txd-iA3GRso4A_BZhAuaYi";
 const AUTHKEY = "jot.auth";
+const SB_FETCH_TIMEOUT_MS = 15000;
+
+/* One deadline covers both the request and its response body. A fetch that
+   returns headers but never finishes JSON is still a hung request, not a
+   successful one. */
+async function sbFetchJson(url, options){
+  const controller = typeof AbortController === "function" ? new AbortController() : null;
+  let timedOut = false, timer;
+  const timeout = new Promise(function(_, reject){
+    timer = setTimeout(function(){
+      timedOut = true;
+      if (controller) controller.abort();
+      const error = new Error("Request timed out.");
+      error.name = "TimeoutError";
+      reject(error);
+    }, SB_FETCH_TIMEOUT_MS);
+  });
+  const request = Object.assign({}, options || {});
+  if (controller) request.signal = controller.signal;
+  try {
+    const response = await Promise.race([fetch(url, request), timeout]);
+    let data = null;
+    if (response.status !== 204){
+      try { data = await Promise.race([response.json(), timeout]); }
+      catch (error){
+        /* An empty 2xx response is allowed to have no JSON. Transport/body
+           failures are not parse errors and must never become false success. */
+        if (timedOut || !(error instanceof SyntaxError)) throw error;
+      }
+    }
+    return { response, data };
+  } catch (error){
+    if (timedOut) {
+      const timeoutError = new Error("Request timed out.");
+      timeoutError.name = "TimeoutError";
+      throw timeoutError;
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 const auth = {
   get session(){
@@ -4383,18 +4702,19 @@ const auth = {
 async function sbAuth(path, body){
   /* ! Every failure path returns a MESSAGE, never a throw. A capture app must
      not show a stack trace, and "something went wrong" is not actionable. */
-  let r;
+  let packet;
   try {
-    r = await fetch(SB_URL + "/auth/v1/" + path, {
+    packet = await sbFetchJson(SB_URL + "/auth/v1/" + path, {
       method: "POST",
       headers: { "apikey": SB_KEY, "Content-Type": "application/json" },
       body: JSON.stringify(body)
     });
   } catch (e) {
-    return { error: "No connection. Your jots are safe on this device." };
+    return { error: e && e.name === "TimeoutError"
+      ? "Connection timed out. Your jots are safe on this device."
+      : "No connection. Your jots are safe on this device." };
   }
-  let d = null;
-  try { d = await r.json(); } catch (e) {}
+  const r = packet.response, d = packet.data;
   if (!r.ok){
     const m = (d && (d.msg || d.error_description || d.message)) || ("HTTP " + r.status);
     return { error: m };
@@ -4464,6 +4784,10 @@ async function sbRefresh(){
   if (!sess || !sess.refresh_token) return false;
   const res = await sbAuth("token?grant_type=refresh_token",
                            { refresh_token: sess.refresh_token });
+  /* Sign-out or another sign-in can happen while refresh is awaiting the
+     network. That response belongs only to the session that requested it. */
+  const current = auth.session;
+  if (!current || current.refresh_token !== sess.refresh_token) return false;
   if (res.error){
     /* ! A refresh token is only really dead on an explicit auth failure.
        A network blip must NOT sign him out - that would mean losing the
@@ -4483,7 +4807,6 @@ async function sbEnsureFresh(){
 
 /* every 20 minutes, well inside a 60-minute token */
 setInterval(function(){ sbEnsureFresh(); }, 20 * 60 * 1000);
-
 /* ==========================================================================
    SYNC - the mirror. localStorage stays the source of truth ON THIS DEVICE;
    Supabase is a mirror the device pushes to and pulls from. The 8/17 plan,
@@ -4539,11 +4862,12 @@ function syncClean(j){
   for (const k in j) if (k[0] !== "_") o[k] = j[k];
   return o;
 }
+function syncSnapshot(j){ return JSON.parse(JSON.stringify(syncClean(j))); }
 const syncable = j => !j._open && !!j.closed_at && j.source !== "demo";
 const wordsOf = t => (String(t).trim().match(/\S+/g) || []).length;
 
 /* the same address vector() computes, under the column names the database
-   stores. Conventions ported from 6-Scripts/jot_schema.py buckets() - never
+   stores. Conventions ported from 6-Scripts/jot/jot_schema.py buckets() - never
    invented here. */
 function syncJotRow(j){
   const v = vector(j), paras = j.paragraphs || [];
@@ -4589,27 +4913,52 @@ function syncParaRows(j){
   return out;
 }
 
-async function sbRest(method, pathq, body, prefer){
-  if (!(await sbEnsureFresh())) return { error: "signed out" };
-  let r;
+function syncIdentityOf(session){
+  return { user_id:session && session.user && session.user.id || null,
+           access_token:session && session.access_token || null };
+}
+function syncIdentityMatches(expected){
+  if (!expected) return true;
+  const current = syncIdentityOf(auth.session);
+  return expected.user_id
+    ? current.user_id === expected.user_id
+    : !!expected.access_token && current.access_token === expected.access_token;
+}
+
+async function sbRest(method, pathq, body, prefer, expectedIdentity){
+  if (!syncIdentityMatches(expectedIdentity)) return { error: "account changed while syncing" };
+  if (!(await sbEnsureFresh()))
+    return { error: syncIdentityMatches(expectedIdentity) ? "signed out" : "account changed while syncing" };
+  if (!syncIdentityMatches(expectedIdentity)) return { error: "account changed while syncing" };
+  let packet;
   try {
+    const session = auth.session;
     const h = { "apikey": SB_KEY,
-                "Authorization": "Bearer " + auth.session.access_token,
+                "Authorization": "Bearer " + session.access_token,
                 "Content-Type": "application/json" };
     if (prefer) h["Prefer"] = prefer;
-    r = await fetch(SB_URL + "/rest/v1/" + pathq, {
+    packet = await sbFetchJson(SB_URL + "/rest/v1/" + pathq, {
       method: method, headers: h,
       body: body === undefined ? undefined : JSON.stringify(body)
     });
-  } catch (e){ return { error: "offline" }; }
+  } catch (e){ return { error: e && e.name === "TimeoutError" ? "request timed out" : "offline" }; }
+  if (!syncIdentityMatches(expectedIdentity)) return { error: "account changed while syncing" };
+  const r = packet.response, d = packet.data;
   if (r.status === 204) return { data: null };
-  let d = null;
-  try { d = await r.json(); } catch {}
   if (!r.ok) return { error: (d && (d.message || d.msg || d.hint)) || ("HTTP " + r.status) };
   return { data: d };
 }
 
 let SYNC_STATE = { running: false, line: "Never synced from this device.", last: null };
+function syncStateEvent(state, message){
+  if (typeof document === "undefined" || typeof document.dispatchEvent !== "function" ||
+      typeof CustomEvent !== "function") return;
+  try {
+    document.dispatchEvent(new CustomEvent("jot-sync-state", {
+      detail:{ state:state, message:String(message || "") }
+    }));
+  } catch (e) {}
+}
 /* sync runs on 10 and 20 minute timers and never said when it last worked.
    trust in sync is trust in the app, so the line carries the age. */
 function syncStatusLine(){
@@ -4622,15 +4971,28 @@ function syncStatusLine(){
 }
 const sEnc = encodeURIComponent;
 const inList = ids => 'in.(' + ids.map(x => '"' + String(x).replace(/"/g, "") + '"').join(",") + ')';
+function syncDeletionIntent(){
+  const ids = {};
+  (syncMeta.get().tomb || []).forEach(function(t){ ids[t.jot_id] = true; });
+  graveyard().forEach(function(id){ ids[id] = true; });
+  return ids;
+}
 
 /* ! One flush at a time - and a second caller JOINS the running one rather
    than being told "waiting". His first real push proved why: the boot flush
    was mid-corpus when he pressed Sync now, and the button shrugged at him
    while 61 jots were in fact flowing up. */
-let _syncInflight = null;
+let _syncInflight = null, _syncRequested = false;
 function syncFlush(){
-  if (_syncInflight) return _syncInflight;
-  _syncInflight = _syncRun().finally(function(){ _syncInflight = null; });
+  if (_syncInflight){ _syncRequested = true; return _syncInflight; }
+  _syncInflight = (async function(){
+    let result;
+    do {
+      _syncRequested = false;
+      result = await _syncRun();
+    } while (_syncRequested);
+    return result;
+  })().finally(function(){ _syncInflight = null; });
   return _syncInflight;
 }
 
@@ -4640,10 +5002,16 @@ async function _syncRun(){
   if (STORE_LOCKED) return { error: "The store is locked, so sync refused to touch it." };
   SYNC_STATE.running = true;
   SYNC_STATE.line = "Syncing...";
-  const fail = m => { SYNC_STATE.line = m; return { error: m }; };
+  syncStateEvent("syncing", SYNC_STATE.line);
+  const fail = m => {
+    SYNC_STATE.line = m;
+    syncStateEvent(/offline|connection|timed out/i.test(m) ? "offline" : "error", m);
+    return { error: m };
+  };
   try {
     if (!(await sbEnsureFresh())) return fail("Session expired. Sign in again.");
-    const me = auth.session.user && auth.session.user.id;
+    const identity = syncIdentityOf(auth.session);
+    const me = identity.user_id;
     const meta = syncMeta.get();
     /* !! ACCOUNT BINDING. If this device's corpus has synced under one
        account, a different sign-in must NOT push his jots into it. */
@@ -4655,7 +5023,7 @@ async function _syncRun(){
     let pulled = [], page;
     do {
       const r = await sbRest("GET", "jot?select=*&updated_at=gt." + sEnc(since) +
-                                    "&order=updated_at.asc&limit=1000");
+                                    "&order=updated_at.asc&limit=1000", undefined, undefined, identity);
       if (r.error) return fail("Pull failed: " + r.error);
       page = r.data || [];
       pulled = pulled.concat(page);
@@ -4677,7 +5045,8 @@ async function _syncRun(){
        couple of KB), it runs every sync, and it is self-healing by
        construction -- the gap closes on the next sync no matter how it opened. */
     try {
-      const idr = await sbRest("GET", "jot?select=jot_id&deleted_at=is.null&limit=10000");
+      const idr = await sbRest("GET", "jot?select=jot_id&deleted_at=is.null&limit=10000",
+                               undefined, undefined, identity);
       if (!idr.error) {
         const have = {};
         (load().jots || []).forEach(function(j){ have[j.jot_id] = 1; });
@@ -4692,41 +5061,60 @@ async function _syncRun(){
           for (let i = 0; i < missing.length; i += 50) {
             const chunk = missing.slice(i, i + 50);
             const inList = chunk.map(function(id){ return '"' + id + '"'; }).join(",");
-            const mr = await sbRest("GET", "jot?select=*&jot_id=in.(" + sEnc(inList) + ")");
+            const mr = await sbRest("GET", "jot?select=*&jot_id=in.(" + sEnc(inList) + ")",
+                                    undefined, undefined, identity);
             if (!mr.error && mr.data) pulled = pulled.concat(mr.data);
           }
           console.log("[sync] reconcile recovered " + missing.length + " jot(s) the cursor had skipped");
         }
       }
     } catch (e) { /* reconcile is a safety net; never let it break a working sync */ }
+    if (!syncIdentityMatches(identity)) return fail("Account changed while syncing. Sync stopped.");
+    if (demoActive() || STORE_LOCKED) return fail("Local store state changed while syncing. Sync stopped.");
 
-    const hashes = syncHashes.get();
-    const st = load();
-    const localBy = {};
-    st.jots.forEach(j => { localBy[j.jot_id] = j; });
-    const dirty = {};                 /* local edits not yet pushed: local wins on pull */
-    st.jots.forEach(function(j){
-      if (syncable(j) && hashes[j.jot_id] !== jotHash(syncClean(j))) dirty[j.jot_id] = true;
-    });
+    let hashes, st, localBy, dirty;
+    const refreshLocal = function(){
+      hashes = syncHashes.get();
+      st = load();
+      localBy = {};
+      st.jots.forEach(j => { localBy[j.jot_id] = j; });
+      dirty = {};                    /* local edits not yet pushed: local wins on pull */
+      st.jots.forEach(function(j){
+        if (syncable(j) && hashes[j.jot_id] !== jotHash(syncClean(j))) dirty[j.jot_id] = true;
+      });
+    };
+    refreshLocal();
 
     let touched = 0;
-    const want = pulled.filter(row => !row.deleted_at && !dirty[row.jot_id]);
+    const initialDeletionIntent = syncDeletionIntent();
+    const want = pulled.filter(row => !row.deleted_at && !dirty[row.jot_id] &&
+                                      !initialDeletionIntent[row.jot_id]);
     const paraBy = {};
     for (let i = 0; i < want.length; i += 60){
       const ids = want.slice(i, i + 60).map(r => r.jot_id);
       const r = await sbRest("GET", "paragraph?select=jot_id,seq,ts,text,source&jot_id=" +
-                                    sEnc(inList(ids)) + "&order=jot_id.asc,seq.asc");
+                                    sEnc(inList(ids)) + "&order=jot_id.asc,seq.asc",
+                             undefined, undefined, identity);
       if (r.error) return fail("Pull failed: " + r.error);
       (r.data || []).forEach(p => { (paraBy[p.jot_id] = paraBy[p.jot_id] || []).push(p); });
     }
+    /* Paragraph fetches can take long enough for Done to save newer work.
+       Re-read both the store and acknowledgement map immediately before the
+       synchronous merge so the awaited snapshot cannot overwrite it. */
+    if (!syncIdentityMatches(identity)) return fail("Account changed while syncing. Sync stopped.");
+    if (demoActive() || STORE_LOCKED) return fail("Local store state changed while syncing. Sync stopped.");
+    refreshLocal();
+    const deletionIntentAtMerge = syncDeletionIntent();
+    const hashAcks = {}, hashDeletes = {};
     pulled.forEach(function(row){
-      if (dirty[row.jot_id]) return;
+      if (dirty[row.jot_id] || deletionIntentAtMerge[row.jot_id]) return;
       if (row.deleted_at){
         if (localBy[row.jot_id]){
           st.jots = st.jots.filter(x => x.jot_id !== row.jot_id);
           delete localBy[row.jot_id]; touched++;
         }
         delete hashes[row.jot_id];
+        hashDeletes[row.jot_id] = true;
         return;
       }
       const paras = (paraBy[row.jot_id] || []).sort((a, b) => a.seq - b.seq)
@@ -4742,12 +5130,14 @@ async function _syncRun(){
       });
       if (row.locked) j.locked = true;
       const h = jotHash(syncClean(j)), cur = localBy[row.jot_id];
-      if (cur && jotHash(syncClean(cur)) === h){ hashes[row.jot_id] = h; return; }
+      if (cur && jotHash(syncClean(cur)) === h){
+        hashes[row.jot_id] = h; hashAcks[row.jot_id] = h; return;
+      }
       if (cur) st.jots[st.jots.indexOf(cur)] = j;
       else st.jots.push(j);
-      localBy[row.jot_id] = j; hashes[row.jot_id] = h; touched++;
+      localBy[row.jot_id] = j; hashes[row.jot_id] = h; hashAcks[row.jot_id] = h; touched++;
     });
-    if (touched && !save(st))
+    if (touched && !save(st, { sync:false }))
       return fail("Pull could not be saved - the store refused the write.");
 
     /* ---- PUSH - only closed jots, dup ids collapsed to the LAST occurrence
@@ -4756,49 +5146,107 @@ async function _syncRun(){
     const changed = [], seen = {};
     st.jots.forEach(function(j){
       if (!syncable(j)) return;
+      if (deletionIntentAtMerge[j.jot_id]) return;
       if (hashes[j.jot_id] === jotHash(syncClean(j))) return;
-      if (seen[j.jot_id] !== undefined) changed[seen[j.jot_id]] = j;
-      else { seen[j.jot_id] = changed.length; changed.push(j); }
+      const snapshot = syncSnapshot(j);
+      if (seen[j.jot_id] !== undefined) changed[seen[j.jot_id]] = snapshot;
+      else { seen[j.jot_id] = changed.length; changed.push(snapshot); }
     });
+    let pushedCount = 0;
     for (let i = 0; i < changed.length; i += 100){
-      const batch = changed.slice(i, i + 100);
+      const currentDeletionIntent = syncDeletionIntent();
+      const batch = changed.slice(i, i + 100).filter(function(j){
+        return !currentDeletionIntent[j.jot_id];
+      });
+      if (!batch.length) continue;
       const up = await sbRest("POST", "jot", batch.map(syncJotRow),
-                              "resolution=merge-duplicates,return=minimal");
+                              "resolution=merge-duplicates,return=minimal", identity);
       if (up.error) return fail("Push failed: " + up.error);
       /* paragraphs are REPLACED per jot: an edit can shorten a jot, and an
          upsert cannot express "row three no longer exists" */
       const ids = batch.map(j => j.jot_id);
-      const del = await sbRest("DELETE", "paragraph?jot_id=" + sEnc(inList(ids)));
+      const del = await sbRest("DELETE", "paragraph?jot_id=" + sEnc(inList(ids)),
+                               undefined, undefined, identity);
       if (del.error) return fail("Push failed: " + del.error);
       const paras = [];
       batch.forEach(j => paras.push.apply(paras, syncParaRows(j)));
       if (paras.length){
-        const ins = await sbRest("POST", "paragraph", paras, "return=minimal");
+        const ins = await sbRest("POST", "paragraph", paras, "return=minimal", identity);
         if (ins.error) return fail("Push failed: " + ins.error);
       }
-      batch.forEach(j => { hashes[j.jot_id] = jotHash(syncClean(j)); });
+      batch.forEach(function(j){
+        const hash = jotHash(syncClean(j));
+        hashes[j.jot_id] = hash;
+        hashAcks[j.jot_id] = hash;
+      });
+      pushedCount += batch.length;
     }
 
     /* ---- TOMBSTONES ---- */
-    const tomb = meta.tomb || [], nTomb = tomb.length;
+    const tomb = (syncMeta.get().tomb || []).slice(), nTomb = tomb.length;
+    const acknowledgedTomb = [];
+    let lockedTombRefused = false;
     if (nTomb){
-      const r = await sbRest("PATCH", "jot?jot_id=" + sEnc(inList(tomb.map(t => t.jot_id))),
-                             { deleted_at: new Date().toISOString() }, "return=minimal");
-      /* a locked row refuses its tombstone BY DESIGN (the read-only journals);
-         that refusal must not wedge the queue forever */
-      if (r.error && !/locked/i.test(r.error)) return fail("Delete sync failed: " + r.error);
-      tomb.forEach(t => delete hashes[t.jot_id]);
-      meta.tomb = [];
+      /* Isolate acknowledgements. One locked read-only row must not make a
+         batch error erase unrelated deletion intentions that were never sent
+         successfully. Every refusal stays queued and makes this pass an
+         honest error; independent rows still get their own attempt. */
+      for (const item of tomb){
+        const r = await sbRest("PATCH", "jot?jot_id=" + sEnc(inList([item.jot_id])),
+                               { deleted_at: new Date().toISOString() }, "return=minimal", identity);
+        if (r.error){
+          if (/locked/i.test(r.error)){ lockedTombRefused = true; continue; }
+          return fail("Delete sync failed: " + r.error);
+        }
+        acknowledgedTomb.push(item);
+        delete hashes[item.jot_id]; hashDeletes[item.jot_id] = true;
+      }
     }
 
-    meta.user_id = me || meta.user_id;
-    meta.last_pull = since;
-    meta.last_ok = iso(new Date());
-    syncMeta.set(meta); syncHashes.set(hashes);
-    SYNC_STATE.last = meta.last_ok;
-    SYNC_STATE.line = "Synced " + new Date().toLocaleTimeString() + " - " +
-                      changed.length + " pushed, " + pulled.length + " pulled" +
-                      (nTomb ? ", " + nTomb + " delete" + (nTomb === 1 ? "" : "s") + " carried" : "") + ".";
+    /* Merge current metadata after every awaited request. Only exact deletion
+       intentions present in the sent snapshot are acknowledged; anything
+       queued while PATCH was in flight remains for the next pass. */
+    if (!syncIdentityMatches(identity)) return fail("Account changed while syncing. Sync stopped.");
+    if (demoActive() || STORE_LOCKED) return fail("Local store state changed while syncing. Sync stopped.");
+    const finalMeta = syncMeta.get();
+    if (nTomb){
+      const acknowledged = new Set(acknowledgedTomb.map(function(t){
+        return String(t.jot_id) + "\u0000" + String(t.deleted_at || "");
+      }));
+      finalMeta.tomb = (finalMeta.tomb || []).filter(function(t){
+        return !acknowledged.has(String(t.jot_id) + "\u0000" + String(t.deleted_at || ""));
+      });
+    }
+    finalMeta.user_id = me || finalMeta.user_id;
+    finalMeta.last_pull = since;
+
+    const finalHashes = syncHashes.get(), deletionIntent = {};
+    (finalMeta.tomb || []).forEach(function(t){ deletionIntent[t.jot_id] = true; });
+    graveyard().forEach(function(id){ deletionIntent[id] = true; });
+    Object.keys(hashDeletes).forEach(function(id){ delete finalHashes[id]; });
+    Object.keys(hashAcks).forEach(function(id){
+      if (!hashDeletes[id] && !deletionIntent[id]) finalHashes[id] = hashAcks[id];
+    });
+    const pendingContent = load().jots.some(function(j){
+      return syncable(j) && !deletionIntent[j.jot_id] &&
+             finalHashes[j.jot_id] !== jotHash(syncClean(j));
+    });
+    const pending = pendingContent || (finalMeta.tomb || []).length > 0;
+    if (!lockedTombRefused && !pending) finalMeta.last_ok = iso(new Date());
+    syncMeta.set(finalMeta); syncHashes.set(finalHashes);
+    if (lockedTombRefused){
+      SYNC_STATE.line = "Delete sync paused: a locked jot could not be deleted.";
+      syncStateEvent("error", SYNC_STATE.line);
+      return { error:SYNC_STATE.line };
+    }
+    if (!pending) SYNC_STATE.last = finalMeta.last_ok;
+    SYNC_STATE.line = pending
+      ? "Syncing newer changes..."
+      : "Synced " + new Date().toLocaleTimeString() + " - " +
+        pushedCount + " pushed, " + pulled.length + " pulled" +
+        (acknowledgedTomb.length ? ", " + acknowledgedTomb.length + " delete" +
+          (acknowledgedTomb.length === 1 ? "" : "s") + " carried" : "") + ".";
+    syncStateEvent(pending ? "syncing" : "synced", SYNC_STATE.line);
     return { ok: SYNC_STATE.line };
   } finally {
     SYNC_STATE.running = false;
@@ -4837,7 +5285,12 @@ function syncTombstone(id){
   const h = syncHashes.get(); delete h[id]; syncHashes.set(h);
   syncSchedule(1000);
 }
-window.addEventListener("online", function(){ syncSchedule(2000); });
+window.addEventListener("online", function(){ syncSchedule(0); });
+if (typeof document !== "undefined" && typeof document.addEventListener === "function"){
+  document.addEventListener("visibilitychange", function(){
+    if (!document.hidden) syncSchedule(0);
+  });
+}
 setInterval(function(){ syncSchedule(1); }, 10 * 60 * 1000);
 
 /* ── CONFIRMATION AND RECOVERY LINKS ────────────────────────────────────────
@@ -5210,10 +5663,92 @@ if (navigator.storage && navigator.storage.persist){
     .catch(() => {});
 }
 
+/* JOT_MOTION_START */
+/* Decorative only: observe headings in their own scrolling container.
+   Never observe the pad, character edits, selection, or storage. */
+function observeJotAccents(root, selector){
+  if (!root || typeof IntersectionObserver === "undefined") return () => {};
+  const media = matchMedia("(prefers-reduced-motion: reduce)");
+  const targets = new Map();
+  let observer, frame = 0, stopped = false;
+  function scan(){
+    frame = 0;
+    if (stopped) return;
+    for (const [node] of targets){
+      if (!root.contains(node)){
+        observer?.unobserve(node);
+        node.classList.remove("jot-motion-line");
+        node.classList.remove("jot-motion-play");
+        targets.delete(node);
+      }
+    }
+    for (const node of root.querySelectorAll(selector)){
+      if (targets.has(node)) continue;
+      targets.set(node, {armed:true});
+      node.classList.add("jot-motion-line");
+      observer?.observe(node);
+    }
+  }
+  function configure(){
+    observer?.disconnect();
+    observer = null;
+    for (const [node, state] of targets){
+      state.armed = true;
+      node.classList.remove("jot-motion-play");
+    }
+    if (!media.matches){
+      observer = new IntersectionObserver(entries => {
+        if (stopped || media.matches) return;
+        for (const entry of entries){
+          const state = targets.get(entry.target);
+          if (!state || !entry.rootBounds) continue;
+          const r = entry.boundingClientRect, b = entry.rootBounds;
+          const outside = !entry.isIntersecting &&
+            (r.bottom <= b.top || r.top >= b.bottom || r.right <= b.left || r.left >= b.right);
+          if (outside){
+            state.armed = true;
+            entry.target.classList.remove("jot-motion-play");
+          } else if (entry.isIntersecting && entry.intersectionRatio >= 0.15 && state.armed){
+            state.armed = false;
+            entry.target.classList.add("jot-motion-play");
+          }
+        }
+      }, {root, threshold:[0, 0.15]});
+      for (const [node] of targets) observer.observe(node);
+    }
+    scan();
+  }
+  configure();
+  const changes = new MutationObserver(() => {
+    if (!frame && !stopped) frame = requestAnimationFrame(scan);
+  });
+  changes.observe(root, {childList:true, subtree:true});
+  media.addEventListener("change", configure);
+  return () => {
+    stopped = true;
+    if (frame) cancelAnimationFrame(frame);
+    observer?.disconnect();
+    changes.disconnect();
+    media.removeEventListener("change", configure);
+    for (const [node] of targets){
+      node.classList.remove("jot-motion-line");
+      node.classList.remove("jot-motion-play");
+    }
+    targets.clear();
+  };
+}
+/* JOT_MOTION_END */
+
+function refreshHomeMotion(deck){
+  refreshHomeMotion.stop?.();
+  refreshHomeMotion.stop = observeJotAccents(deck, ".task:not(.manage-task)");
+}
+
 window.JotTheme.bind();
 entryGate();
 clock(); setInterval(clock, 15000);   /* < ROTATE_MS so a flip is never missed */
 renderHome();
+observeJotAccents(libBody, ".libpagetitle,.library-timeline-heading,.libsection > summary,.grp");
 if (auth.signedIn) syncSchedule(2500);   /* signed in at open -> quiet catch-up */
 </script>
 </body>
