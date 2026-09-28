@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-build="v103">
+<html lang="en" data-build="v104">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
@@ -4666,11 +4666,23 @@ async function sbFetchJson(url, options){
     const response = await Promise.race([fetch(url, request), timeout]);
     let data = null;
     if (response.status !== 204){
-      try { data = await Promise.race([response.json(), timeout]); }
-      catch (error){
-        /* An empty 2xx response is allowed to have no JSON. Transport/body
-           failures are not parse errors and must never become false success. */
-        if (timedOut || !(error instanceof SyntaxError)) throw error;
+      /* Read TEXT, then parse. An empty 2xx body (Supabase's answer to every
+         upsert with return=minimal) makes response.json() reject, and WebKit -
+         every iPhone browser - rejects with a DOMException named "SyntaxError"
+         that is NOT instanceof the JS SyntaxError. Deciding by error class
+         therefore split desktop from iPhone. Decide by the body instead. */
+      const text = await Promise.race([response.text(), timeout]);
+      if (text && text.trim()){
+        try { data = JSON.parse(text); }
+        catch (parseError){
+          /* Garbage on a success status must never become false success. On an
+             error status the caller reports "HTTP <status>", so stay quiet. */
+          if (response.ok){
+            const bad = new Error("response was not JSON.");
+            bad.name = "ResponseParseError";
+            throw bad;
+          }
+        }
       }
     }
     return { response, data };
@@ -4712,7 +4724,9 @@ async function sbAuth(path, body){
   } catch (e) {
     return { error: e && e.name === "TimeoutError"
       ? "Connection timed out. Your jots are safe on this device."
-      : "No connection. Your jots are safe on this device." };
+      : e && e.name === "TypeError"
+        ? "No connection. Your jots are safe on this device."
+        : "Unexpected response from the server. Your jots are safe on this device." };
   }
   const r = packet.response, d = packet.data;
   if (!r.ok){
@@ -4941,7 +4955,14 @@ async function sbRest(method, pathq, body, prefer, expectedIdentity){
       method: method, headers: h,
       body: body === undefined ? undefined : JSON.stringify(body)
     });
-  } catch (e){ return { error: e && e.name === "TimeoutError" ? "request timed out" : "offline" }; }
+  } catch (e){
+    /* Match on e.name, not instanceof: WebKit throws DOMExceptions and a fetch
+       failure is TypeError only by name across realms. "offline" is reserved for
+       a genuine network failure so the label cannot lie about other faults. */
+    if (e && e.name === "TimeoutError") return { error: "request timed out" };
+    if (e && e.name === "TypeError") return { error: "offline" };
+    return { error: "unexpected response: " + ((e && e.message) || String(e)) };
+  }
   if (!syncIdentityMatches(expectedIdentity)) return { error: "account changed while syncing" };
   const r = packet.response, d = packet.data;
   if (r.status === 204) return { data: null };
