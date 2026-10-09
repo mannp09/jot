@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-build="v104">
+<html lang="en" data-build="v105">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
@@ -523,6 +523,7 @@ html.ioskb-nobidi #lines{unicode-bidi:normal!important}
 .jrow .t{font-size:var(--f1);font-weight:700;color:var(--muted);
   font-variant-numeric:tabular-nums;padding-top:3px}
 .jrow .cat{font-size:var(--f0);font-weight:700;letter-spacing:var(--tr-label);color:var(--accent)}
+.jrow .t .dtag{display:block;margin-top:0;line-height:1.2;font-size:var(--f0);letter-spacing:var(--tr-label);white-space:nowrap}
 .jrow .pv{font-size:var(--f2);line-height:1.45;color:var(--ink);
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .empty{padding:30px 4px;color:var(--muted);font-size:var(--f2)}
@@ -1692,7 +1693,7 @@ header,#padtop,#libtop{min-height:58px}
          deliberately ABSENT - no value means "defer to the keyboard", and
          "sentences" would force a capital onto fragment answers that are
          legitimately lowercase (ruled 8/28).
-         September 20 amendment: Mann now requests sentence capitalization.
+         September 20 amendment: sentence capitalization is now requested.
          This platform hint does not rewrite existing words. -->
     <div id="lines" contenteditable="true" spellcheck="true" autocorrect="on" autocapitalize="sentences"
          role="textbox" aria-multiline="true" aria-label="Jot text"></div>
@@ -2376,6 +2377,21 @@ const longDate = d => `${MON[d.getMonth()]} ${ord(d.getDate())} ${d.getFullYear(
 
    Lookups by jot_id are never filtered either. Hiding is a view concern;
    a hidden jot must still be findable, editable and exportable. */
+/* ★ DICTATED, his ruling 2026-10-08 (queue row 39): "i want it to be a jot i
+   can read on my phone - so label it dictated but allow to be viewable on same
+   table". Words he dictated into a Claude session and had filed as jots carry
+   the JOT-level source "import:chat" (9 on the server, measured 2026-10-08).
+
+   *** isImported below matches "import:journal" ONLY, on purpose. *** A dictated
+   jot is in the same lists as a typed one whatever the imported toggle says;
+   it just wears a DICTATED label (library.js: dictatedTag in the row's time
+   column; "DICTATED · N WORDS" in the opened jot's back bar).
+
+   ⚠ Keyed on the JOT's source, never the paragraph's: all 9 server paragraphs
+   for these jots have source = null, so a paragraph-level test would label
+   none of them. The label is display only; the stored key stays import:chat. */
+const DICTATED_SOURCE = "import:chat";
+const isDictated  = j => j?.source === DICTATED_SOURCE;
 const SHOW_IMPORTED = "jot.showImported";
 const isImported  = j => typeof j?.source === "string" && j.source.startsWith("import:journal");
 const showImported = () => localStorage.getItem(SHOW_IMPORTED) === "1";
@@ -3256,6 +3272,21 @@ function saveAndHome(){
         paragraphs: [{ ts: p.ts, text: p.text, source: p.source || "typed" }]
       };
       const i = st.jots.findIndex(j => j.jot_id === rec.jot_id);
+      /* ★ PROVENANCE GUARD, his ruling 2026-10-09. A jot filed from an import
+         (import:chat = dictated, import:journal) that is reopened in the pad and
+         saved must stay what it was: the rows are stamped "typed" by
+         snapshotRowsFromDom, so without this Done rewrote the jot AND its
+         paragraph to "typed", erased the DICTATED label and misstated where the
+         words came from. Only a stored "import:" source is kept; typed and
+         legacy source-less jots are stamped typed exactly as before, and a row
+         with no stored jot (a new line) is still typed. The paragraph keeps
+         the stored paragraph source, or none - never an invented one. */
+      const stored = i >= 0 ? st.jots[i] : null;
+      if (stored && typeof stored.source === "string" && stored.source.startsWith("import:")){
+        rec.source = stored.source;
+        const was = stored.paragraphs && stored.paragraphs[0] ? stored.paragraphs[0].source : undefined;
+        if (was) rec.paragraphs[0].source = was; else delete rec.paragraphs[0].source;
+      }
       if (i >= 0) st.jots[i] = { ...st.jots[i], ...rec }; else st.jots.push(rec);
     }
     if (!save(st)){
@@ -3660,6 +3691,20 @@ const hits = (j, q) => !q || (
   j.paragraphs.some(p => p.text.toLowerCase().includes(q)) ||
   j.category.toLowerCase().includes(q));
 
+/* ★ the DICTATED mark (queue row 39; list placement ruled 2026-10-09, "1A").
+   A list row carries it in the TIME column, under the time, in the same grey
+   (.jrow .t .dtag, shell.css) - a stamp of where the words came from, beside
+   the stamp of when. Measured: the word is 60.1px inside the 62px column.
+   ⚠ NOT in the .cat line: tried inline, and at 375px three of four dictated
+   rows ("GRATEFUL · NIGHTCAP NOTE · DICTATED") wrapped and left a dangling dot;
+   tried on its own line there, and every dictated row grew by a line of accent
+   caps that competed with the category.
+   Empty for everything that is not import:chat. The opened jot says the same
+   word in the back bar's right-hand label (renderJot), never as a chip: the
+   chip row is the ten-place address and its caption says ten. Display only:
+   the stored source stays "import:chat". */
+const dictatedTag = j => isDictated(j) ? '<span class="dtag">DICTATED</span>' : "";
+
 /* LIBRARY_SHOWCASE_PURE_START */
 function libraryInitialSections(demo=false){
   return { profile:false, transfer:false, archive:false, options:false,
@@ -3964,7 +4009,7 @@ function renderLib(){
     const span = n > 1
       ? "  \u00b7  " + n + " ENTRIES from " + clk(new Date(j.opened_at))
       : "";
-    b.innerHTML = `<div class="t">${clk(new Date(newestTs(j)))}</div>
+    b.innerHTML = `<div class="t">${clk(new Date(newestTs(j)))}${dictatedTag(j)}</div>
       <div><div class="cat">${label(v.category)} &nbsp;&#183;&nbsp; ${showingFun() ? v.fun : v.daypart.toUpperCase()}${span}</div>
       <div class="pv"></div></div>`;
     b.querySelector(".pv").textContent =
@@ -4422,12 +4467,18 @@ function renderJot(j){
 
   const back = document.createElement("button");
   back.className = "mrow"; back.style.marginBottom = "6px";
-  back.innerHTML = `<span>&#8592; &nbsp;All jots</span><span class="sub">${words(j)} ${words(j)===1?"WORD":"WORDS"}</span>`;
+  /* ★ the right-hand label already says how big the jot is; a dictated one says
+     where it came from first: "DICTATED · 25 WORDS" (ruled 2026-10-09, "2A").
+     Same grey caps, no new row. A typed jot's label is untouched. */
+  back.innerHTML = `<span>&#8592; &nbsp;All jots</span><span class="sub">${isDictated(j) ? "DICTATED &#183; " : ""}${words(j)} ${words(j)===1?"WORD":"WORDS"}</span>`;
   back.onclick = () => enterRoute("library", renderLib, { returnToTimeline:true, focus:false });
   libBody.appendChild(back);
 
   const vec = document.createElement("div");
   vec.className = "vec";
+  /* ⚠ EXACTLY TEN, and no source chip: the caption below says "Ten places at
+     once, all from one timestamp". A SOURCE chip made it eleven (ruled out
+     2026-10-09, "2A"); the dictated word lives in the back bar above. */
   const chips = [["CATEGORY",v.category],["DAY PART", v.daypart],   // rule 6: the stored value, never prettified
     ["DATE",v.date],["DOW",v.dow],["WEEK",v.week],["MONTH",v.month],
     ["QUARTER",v.quarter],["YEAR",v.year],["DECADE",v.decade],["HOUR",v.hour]];
